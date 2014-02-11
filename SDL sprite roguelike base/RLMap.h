@@ -28,6 +28,7 @@ public:
 	BitArray passable;							//can player and mobs move through this square yes or no
 	BitArray blocks_sight;						//does this square block sight? e.g. wall yes, open door no
 	BitArray in_FOV;							//FOV routines set this to true in each square in FOV
+	BitArray FOV_set_this_run;					//temp array to use in fov routine to avoid processing each in_fov square multiple times
 	BitArray fogofwar;							//is cell covered by fog of war, i.e. not discovered yet? starts off true for every cell
 	Array2D<unsigned char> playermemory;		//this is what player last saw on that square (architecture only)			
 	
@@ -64,6 +65,7 @@ public:
 		blocks_sight.Init(false, width, height);
 		distance.Init(width, height);
 		in_FOV.Init(false, width, height);
+		FOV_set_this_run.Init(false, width, height);
 		maxint = std::numeric_limits<int>::max();
 		playermemory.Init('.', width, height);
 		fogofwar.Init(true, width, height);
@@ -439,10 +441,12 @@ public:
 	}
 
 	//FOV STUFF
+	//from http://www.roguebasin.com/index.php?title=C%2B%2B_shadowcasting_implementation
+	// "A C++ implementation of Bjorn Bergstrom's recursive shadowcasting FOV algorithm."
 
 	void cast_light(uint x, uint y, uint radius, uint row,
 		float start_slope, float end_slope, uint xx, uint xy, uint yx,
-		uint yy, std::function<void(uint x,uint y)>WhatToDo) {
+		uint yy, std::function<void (uint x, uint y)> WhatToDo) {
 		if (start_slope < end_slope) {
 			return;
 		}
@@ -473,10 +477,10 @@ public:
 
 				uint radius2 = radius * radius;
 				if ((uint) (dx * dx + dy * dy) < radius2) {
-					WhatToDo(ax, ay);
-					//in_FOV.set(ax, ay, true);
-					//fogofwar.set(ax, ay, false);
-					//playermemory.at(ax, ay) = displaychar.at(ax, ay);
+					if (!FOV_set_this_run.get(ax, ay)){
+						FOV_set_this_run.set(ax, ay, true);
+						WhatToDo(ax, ay);
+					}
 				}
 
 				if (blocked) {
@@ -503,9 +507,9 @@ public:
 	}
 
 	void do_fov_rec_shadowcast(uint x, uint y, uint radius) {
-
+		FOV_set_this_run.Fill(false);
 		in_FOV.Fill(false);
-		//std::function<void(uint x, uint y)>
+		
 		auto ff = [this](uint x, uint y){
 			in_FOV.set(x, y, true);
 			fogofwar.set(x, y, false);
@@ -516,11 +520,6 @@ public:
 			cast_light(x, y, radius, 1, 1.0, 0.0, multipliers[0][i],
 				multipliers[1][i], multipliers[2][i], multipliers[3][i],
 				ff
-				//[this](uint x, uint y){
-				//	in_FOV.set(x, y, true);
-				//	fogofwar.set(x, y, false);
-				//	playermemory.at(x,y) = displaychar.at(x, y);
-			//}
 			);
 		}
 		ff(x, y);
@@ -528,13 +527,13 @@ public:
 
 
 	void do_fov_foralight(uint callx, uint cally, uint radius,ColouredLight clr) {
+		FOV_set_this_run.Fill(false);
 		float perr = (float) ((clr.r / 2) / (float) radius)/2;
 		float perg = (float) ((clr.g / 2) / (float) radius)/2;
 		float perb = (float) ((clr.b / 2) / (float) radius)/2;
 	
 		auto ff = [this, callx, cally, perr,perg,perb, radius](uint xx, uint yy){
-			//one problem i think is this code gets called more than once for the same square
-			//2nd problem is mystery: how is fov for lights going through walls?
+	
 			float anothertemp = (radius - Distance_Euclidean(callx, cally, xx, yy));
 			signed int tempyr = (int) (perr*anothertemp);
 			signed int tempyg = (int) (perg*anothertemp);
@@ -545,6 +544,9 @@ public:
 			staticlight.at(xx, yy).b += perb + tempyb;
 
 		};
+
+	
+
 		
 		for (uint i = 0; i < 8; i++) {
 			cast_light(callx, cally, radius, 1, 1.0, 0.0, multipliers[0][i],
@@ -559,6 +561,8 @@ public:
 	}
 
 		void do_fov_foradynamiclight(uint callx, uint cally, uint radius,ColouredLight clr) {
+			FOV_set_this_run.Fill(false);
+			
 			float perr = (float) ((clr.r / 2) / (float) radius) / 2;
 			float perg = (float) ((clr.g / 2) / (float) radius) / 2;
 			float perb = (float) ((clr.b / 2) / (float) radius) / 2;
