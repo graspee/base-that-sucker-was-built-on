@@ -27,6 +27,12 @@
 #include "windows.h"
 #undef max
 
+inline unsigned int clamp(unsigned int x,unsigned int low, unsigned int high){
+	if (x <= low)return low;
+	if (x >= high)return high;
+	return x;
+}
+
 int fprintf(FILE * stream, const char * format, ...){ return 0; }
 
 #define NORMAL FOREGROUND_BLUE|FOREGROUND_GREEN|FOREGROUND_RED
@@ -77,7 +83,7 @@ int main(int argc, char* args[])
 #include "notomap.h"
 	testmap.playerx = 15;
 	testmap.playery = 11;
-	bool lantern = true;
+	bool lantern = false;
 
 	//int koboldx = 69, koboldy = 46;
 
@@ -154,9 +160,9 @@ int main(int argc, char* args[])
 		}
 		testmap.do_fov_rec_shadowcast(testmap.playerx, testmap.playery, 11);
 
-		testmap.dynamiclight.Fill(0);
+		testmap.dynamiclight.Fill({0,0,0});
 		if (lantern)
-			testmap.do_fov_foradynamiclight(testmap.playerx, testmap.playery, 9, 255);
+			testmap.do_fov_foradynamiclight(testmap.playerx, testmap.playery, 9, { 255, 255, 255 });
 
 
 		//render dungeon
@@ -187,7 +193,7 @@ int main(int argc, char* args[])
 				rect.y = (y - originy) * 16;
 
 				SDL_Texture* ti;
-				int li = 0;
+				int lir = 0,lig=0,lib=0;
 
 
 				switch (testmap.displaychar.at(x, y)){
@@ -212,14 +218,15 @@ int main(int argc, char* args[])
 				}
 
 				if (testmap.in_FOV.get(x, y)){
-					li = MAX(testmap.staticlight.at(x, y), testmap.dynamiclight.at(x, y));
-					if (li < 25){
-						li = 25;
-						SDL_SetTextureColorMod(ti, 25, 25, 25);
-					}
-					else {
-						SDL_SetTextureColorMod(ti, li, li, 128);
-					}
+					lir = testmap.staticlight.at(x, y).r + testmap.dynamiclight.at(x, y).r;
+					lig = testmap.staticlight.at(x, y).g + testmap.dynamiclight.at(x, y).g;
+					lib = testmap.staticlight.at(x, y).b + testmap.dynamiclight.at(x, y).b;
+					
+					lir = clamp(lir, 0, 255);
+					lig = clamp(lig, 0, 255);
+					lib = clamp(lib, 0, 255);
+					SDL_SetTextureColorMod(ti, lir, lig, lib);
+					
 					SDL_RenderCopy(renderer, ti, NULL, &rect);
 
 					//minimap

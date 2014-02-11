@@ -60,6 +60,8 @@ void spriteexit(void){
 	//Cleanup my sprites
 	for (size_t i = 0; i < 40; i++)
 		SDL_DestroyTexture(sprites_bg[i]);
+	//cleanup font
+	SDL_DestroyTexture(hobbitfont);
 
 
 }

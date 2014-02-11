@@ -2,6 +2,10 @@
 
 #include <functional>
 
+struct ColouredLight {
+	signed int r, g, b;
+};
+
 //RLMAP REPRESENTS ONE RL GAME MAP OR LEVEL
 class RLMap {
 private:
@@ -25,11 +29,11 @@ public:
 	BitArray blocks_sight;						//does this square block sight? e.g. wall yes, open door no
 	BitArray in_FOV;							//FOV routines set this to true in each square in FOV
 	BitArray fogofwar;							//is cell covered by fog of war, i.e. not discovered yet? starts off true for every cell
-	Array2D<unsigned char> playermemory;		//this is what player last saw on that square (architecture only)
-
-	Array2D<signed int> staticlight;			//light amount on cell e.g. torches. can be changed but not often
-	Array2D<signed int> dynamiclight;				
-							
+	Array2D<unsigned char> playermemory;		//this is what player last saw on that square (architecture only)			
+	
+	Array2D<ColouredLight> staticlight;			//light amount on cell e.g. torches. can be changed but not often
+	Array2D<ColouredLight> dynamiclight;
+	
 	Array2D<int> distance;						//this is used by the pathfinding routines
 	std::list<todoitem> lastpath;				//this is filled by the pathfinding routines
 
@@ -63,8 +67,9 @@ public:
 		maxint = std::numeric_limits<int>::max();
 		playermemory.Init('.', width, height);
 		fogofwar.Init(true, width, height);
-		staticlight.Init(width, height);
-		dynamiclight.Init(width, height);
+		
+		staticlight.Init({ 0, 0, 0 }, width, height);
+		dynamiclight.Init({ 0, 0, 0 },width, height);
 
 		
 		
@@ -85,6 +90,7 @@ public:
 	}*/
 
 	//DRAW MAP ON CONSOLE
+	/*
 	void DisplayOnConsole(void){
 		concurspos(0, 0);
 		for (size_t y = 0; y < height; y++)
@@ -163,7 +169,7 @@ public:
 			std::cout << std::endl;
 		}
 	}
-
+	*/
 	//PUT A RECTANGULAR BLOCK IN MAP
 	void RectFill(int _x, int _y, int _w, int _h){
 		for (size_t y = _y; y < _y + _h; y++)
@@ -499,8 +505,8 @@ public:
 	void do_fov_rec_shadowcast(uint x, uint y, uint radius) {
 
 		in_FOV.Fill(false);
-
-		std::function<void(uint x, uint y)> ff = [this](uint x, uint y){
+		//std::function<void(uint x, uint y)>
+		auto ff = [this](uint x, uint y){
 			in_FOV.set(x, y, true);
 			fogofwar.set(x, y, false);
 			playermemory.at(x, y) = displaychar.at(x, y);
@@ -521,15 +527,27 @@ public:
 	}
 
 
-	void do_fov_foralight(uint x, uint y, uint radius,uint strength) {
-		float per = (float) (strength/2) / (float) radius;
-		//std::function<void(uint xx, uint yy)> 
-		auto ff = [this, x, y, per, radius,strength](uint xx, uint yy){
-			staticlight.at(xx, yy) = MAX(staticlight.at(xx,yy),(strength/2)+(int) (per*(radius - Distance_Euclidean(x, y, xx, yy))));
+	void do_fov_foralight(uint callx, uint cally, uint radius,ColouredLight clr) {
+		float perr = (float) ((clr.r / 2) / (float) radius)/2;
+		float perg = (float) ((clr.g / 2) / (float) radius)/2;
+		float perb = (float) ((clr.b / 2) / (float) radius)/2;
+	
+		auto ff = [this, callx, cally, perr,perg,perb, radius](uint xx, uint yy){
+			//one problem i think is this code gets called more than once for the same square
+			//2nd problem is mystery: how is fov for lights going through walls?
+			float anothertemp = (radius - Distance_Euclidean(callx, cally, xx, yy));
+			signed int tempyr = (int) (perr*anothertemp);
+			signed int tempyg = (int) (perg*anothertemp);
+			signed int tempyb = (int) (perb*anothertemp);
+			
+			staticlight.at(xx, yy).r += perr + tempyr;
+			staticlight.at(xx, yy).g += perg + tempyg;
+			staticlight.at(xx, yy).b += perb + tempyb;
+
 		};
 		
 		for (uint i = 0; i < 8; i++) {
-			cast_light(x, y, radius, 1, 1.0, 0.0, multipliers[0][i],
+			cast_light(callx, cally, radius, 1, 1.0, 0.0, multipliers[0][i],
 				multipliers[1][i], multipliers[2][i], multipliers[3][i],
 				ff
 				//[this,x,y,per,radius](uint xx, uint yy){
@@ -537,23 +555,33 @@ public:
 			//}
 			);
 		}
-		ff(x, y);
+		ff(callx, cally);
 	}
 
-		void do_fov_foradynamiclight(uint x, uint y, uint radius,uint strength) {
-		float per = (float) (strength/2) / (float) radius;
-		//std::function<void(uint xx, uint yy)>
-		auto ff = [this, x, y, per, radius,strength](uint xx, uint yy){
-			dynamiclight.at(xx, yy) = (strength/2)+(int) (per*(radius - Distance_Euclidean(x, y, xx, yy)));
+		void do_fov_foradynamiclight(uint callx, uint cally, uint radius,ColouredLight clr) {
+			float perr = (float) ((clr.r / 2) / (float) radius) / 2;
+			float perg = (float) ((clr.g / 2) / (float) radius) / 2;
+			float perb = (float) ((clr.b / 2) / (float) radius) / 2;
+		
+		auto ff = [this, callx, cally, perr,perg,perb, radius](uint xx, uint yy){
+
+			float anothertemp = (radius - Distance_Euclidean(callx, cally, xx, yy));
+			signed int tempyr = (int) (perr*anothertemp);
+			signed int tempyg = (int) (perg*anothertemp);
+			signed int tempyb = (int) (perb*anothertemp);
+
+			dynamiclight.at(xx, yy).r += perr + tempyr;
+			dynamiclight.at(xx, yy).g += perg + tempyg;
+			dynamiclight.at(xx, yy).b += perb + tempyb;
 		};
 		
 		for (uint i = 0; i < 8; i++) {
-			cast_light(x, y, radius, 1, 1.0, 0.0, multipliers[0][i],
+			cast_light(callx, cally, radius, 1, 1.0, 0.0, multipliers[0][i],
 				multipliers[1][i], multipliers[2][i], multipliers[3][i],
 				ff
 			);
 		}
-		ff(x, y);
+		ff(callx, cally);
 	}
 
 

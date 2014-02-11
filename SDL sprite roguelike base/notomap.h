@@ -102,7 +102,7 @@ const char graspeemap[4001] =
 #                         ################## ##        ###    # ##### ## #######\
 ################################################################################";
 
-testmap.staticlight.Fill(0);
+testmap.staticlight.Fill({0,0,0});
 
 for (size_t y = 0; y < 50 ; y++)
 {
@@ -118,13 +118,13 @@ for (size_t y = 0; y < 50 ; y++)
 			testmap.displaychar.at(x, y) = '+';
 			testmap.passable.set(x, y, true);
 			testmap.blocks_sight.set(x, y, false);
-			testmap.do_fov_foralight(x, y, 9, 255);
+			//testmap.do_fov_foralight(x, y, 9, { 255, 255, 128 });
 			break;
 		case 'L':
 			testmap.displaychar.at(x, y) = 'L';
 			testmap.passable.set(x, y, true);
 			testmap.blocks_sight.set(x, y, false);
-			testmap.do_fov_foralight(x, y, 9, 255);
+			testmap.do_fov_foralight(x, y, 9, { 255, 0, 0 });
 			break;
 		case ' ':
 			testmap.displaychar.at(x, y) = ' ';
