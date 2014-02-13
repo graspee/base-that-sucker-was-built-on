@@ -56,6 +56,11 @@ public:
 		return sqrt((dx*dx) + (dy*dy));
 	}
 
+	inline static int Distance_Squared(int x, int y, int x2, int y2) {
+		int dx = abs(x - x2);
+		int dy = abs(y - y2);
+		return (dx*dx) + (dy*dy);
+	}
 	//CREATE A RL MAP
 	RLMap(int _w, int _h) :
 		width(_w), height(_h) {
@@ -526,7 +531,7 @@ public:
 	}
 
 
-	void do_fov_foralight(uint callx, uint cally, uint radius,ColouredLight clr) {
+/*	void do_fov_foralight(uint callx, uint cally, uint radius,ColouredLight clr) {
 		FOV_set_this_run.Fill(false);
 		float perr = (float) ((clr.r / 2) / (float) radius)/2;
 		float perg = (float) ((clr.g / 2) / (float) radius)/2;
@@ -544,7 +549,7 @@ public:
 			staticlight.at(xx, yy).b += perb + tempyb;
 
 		};
-
+		
 	
 
 		
@@ -559,24 +564,73 @@ public:
 		}
 		ff(callx, cally);
 	}
+	*/
+	
+	void do_fov_foralight(uint callx, uint cally, uint radius, ColouredLight clr) {
+		FOV_set_this_run.Fill(false);
+		//float perr = (float) ((clr.r / 2) / (float) radius) / 2;
+		//float perg = (float) ((clr.g / 2) / (float) radius) / 2;
+		//float perb = (float) ((clr.b / 2) / (float) radius) / 2;
+
+		auto ff = [this, callx, cally, radius, clr](uint xx, uint yy){
+
+			
+			dolight(callx, cally, xx, yy, radius, clr, staticlight.at(xx, yy));
+			//float anothertemp = (radius - Distance_Euclidean(callx, cally, xx, yy));
+			//signed int tempyr = (int) (perr*anothertemp);
+			//signed int tempyg = (int) (perg*anothertemp);
+			//signed int tempyb = (int) (perb*anothertemp);
+
+			//staticlight.at(xx, yy).r += perr + tempyr;
+			//staticlight.at(xx, yy).g += perg + tempyg;
+			//staticlight.at(xx, yy).b += perb + tempyb;
+
+		};
+
+
+
+
+		for (uint i = 0; i < 8; i++) {
+			cast_light(callx, cally, radius, 1, 1.0, 0.0, multipliers[0][i],
+				multipliers[1][i], multipliers[2][i], multipliers[3][i],
+				ff
+				//[this,x,y,per,radius](uint xx, uint yy){
+				//	staticlight.at(xx, yy) += (int) (  per*(radius-Distance_Euclidean(x,y,xx,yy))   );
+				//}
+				);
+		}
+		ff(callx, cally);
+	}
+
+	inline void dolight(uint x1, uint y1, uint x2, uint y2,
+		uint r, const ColouredLight& colour, ColouredLight& store){
+		//nice lave with 3 + ds /5 and radius 9
+		float c1 = 1.0 / (1.0 + Distance_Squared(x1, y1, x2, y2) / 10);
+		float c2 = c1 - 1.0 / (1.0 + r*r);
+		float c3 = c2 / (1.0 - 1.0 / (1.0 + r*r));
+
+		store.r += colour.r * c3;
+		store.g += colour.g * c3;
+		store.b += colour.b * c3;
+	
+	}
 
 		void do_fov_foradynamiclight(uint callx, uint cally, uint radius,ColouredLight clr) {
 			FOV_set_this_run.Fill(false);
 			
-			float perr = (float) ((clr.r / 2) / (float) radius) / 2;
-			float perg = (float) ((clr.g / 2) / (float) radius) / 2;
-			float perb = (float) ((clr.b / 2) / (float) radius) / 2;
+			//
 		
-		auto ff = [this, callx, cally, perr,perg,perb, radius](uint xx, uint yy){
+		auto ff = [this, callx, cally, radius, clr](uint xx, uint yy){
 
-			float anothertemp = (radius - Distance_Euclidean(callx, cally, xx, yy));
-			signed int tempyr = (int) (perr*anothertemp);
-			signed int tempyg = (int) (perg*anothertemp);
-			signed int tempyb = (int) (perb*anothertemp);
+			dolight(callx, cally, xx, yy, radius, clr, dynamiclight.at(xx, yy));
+			//optomize this
+			//float c1 = 1.0 / (1.0 + Distance_Squared(callx, cally, xx, yy) / 20);
+			//float c2 = c1 - 1.0 / (1.0 + radius*radius);
+			//float c3 = c2 / (1.0 - 1.0 / (1.0 + radius*radius));
 
-			dynamiclight.at(xx, yy).r += perr + tempyr;
-			dynamiclight.at(xx, yy).g += perg + tempyg;
-			dynamiclight.at(xx, yy).b += perb + tempyb;
+			//dynamiclight.at(xx, yy).r += clr.r * c3;
+			//dynamiclight.at(xx, yy).g += clr.g * c3;
+			//dynamiclight.at(xx, yy).b += clr.b * c3;
 		};
 		
 		for (uint i = 0; i < 8; i++) {

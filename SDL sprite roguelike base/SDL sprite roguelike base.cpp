@@ -222,9 +222,9 @@ int main(int argc, char* args[])
 					lig = testmap.staticlight.at(x, y).g + testmap.dynamiclight.at(x, y).g;
 					lib = testmap.staticlight.at(x, y).b + testmap.dynamiclight.at(x, y).b;
 					
-					lir = clamp(lir, 0, 255);
-					lig = clamp(lig, 0, 255);
-					lib = clamp(lib, 0, 255);
+					lir = clamp(lir, 25, 255);
+					lig = clamp(lig, 25, 255);
+					lib = clamp(lib, 25, 255);
 					SDL_SetTextureColorMod(ti, lir, lig, lib);
 					
 					SDL_RenderCopy(renderer, ti, NULL, &rect);
@@ -265,9 +265,28 @@ int main(int argc, char* args[])
 				}//begin not in fov
 				else {
 					if (!testmap.fogofwar.get(x, y)){
-						//SDL_SetTextureColorMod(ti, 0, 0, 150);
+						//SDL_SetTextureColorMod(ti, 0, 0, 5);
 						switch (testmap.playermemory.at(x, y)){
 						case '.':
+							ti = dicosprite.at("floor");
+							break;
+						case '#':
+							ti = dicosprite.at("wall");
+							break;
+						case '+':
+							ti = dicosprite.at("torch lit");
+							break;
+						case 'L':
+							ti = dicosprite.at("lava");
+							break;
+						case '~':
+							ti = dicosprite.at("water");
+							break;
+						default:
+							ti = dicosprite.at("floor");
+							break;
+						}
+							/*case '.':
 							ti = dicosprite.at("floor bp");
 							break;
 						case '#':
@@ -284,8 +303,9 @@ int main(int argc, char* args[])
 							break;
 						default:
 							ti = dicosprite.at("floor bp");
-							break;
-						}
+							break;*/
+						//}
+						SDL_SetTextureColorMod(ti, 0, 0, 75);
 					}
 					else {
 						SDL_SetTextureColorMod(ti, 0, 0, 0);

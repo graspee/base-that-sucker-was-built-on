@@ -150,10 +150,10 @@ for (size_t y = 0; y < 50; y++)
 	{
 		switch (notomap[(y * 80) + x]){
 		case '+':
-			testmap.do_fov_foralight(x, y, 9, { 255, 255, 128 });
+			testmap.do_fov_foralight(x, y, 4, { 255, 255, 128 });
 			break;
 		case 'L':
-			testmap.do_fov_foralight(x, y, 9, { 255, 0, 0 });
+			testmap.do_fov_foralight(x, y, 4, { 255, 0, 0 });
 			break;
 		}
 	}
