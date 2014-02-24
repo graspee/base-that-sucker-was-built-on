@@ -1,5 +1,8 @@
 
 #include "stdafx.h"
+
+#include "lilhelpers.h"
+
 #include "Array2D.h"
 #include "BitArray.h"
 
@@ -69,6 +72,8 @@ SDL_Renderer *renderer;
 #include "sound.h"
 #include "sprites.h"
 
+#include "mapgen.h"
+
 #if _DEBUG
 int _tmain(int argc, _TCHAR* argv[])
 #else
@@ -78,9 +83,11 @@ int main(int argc, char* args[])
 	RLMap testmap(80, 50);
 
 
-
+	randomlevel();//REMOVE
 
 #include "notomap.h"
+
+
 	testmap.playerx = 15;
 	testmap.playery = 11;
 	bool lantern = false;

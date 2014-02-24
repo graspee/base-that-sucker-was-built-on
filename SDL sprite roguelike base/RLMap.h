@@ -65,14 +65,14 @@ public:
 	RLMap(int _w, int _h) :
 		width(_w), height(_h) {
 
-		displaychar.Init('.', width, height);
+		displaychar.Init('`', width, height);
 		passable.Init(true, width, height);
 		blocks_sight.Init(false, width, height);
 		distance.Init(width, height);
 		in_FOV.Init(false, width, height);
 		FOV_set_this_run.Init(false, width, height);
 		maxint = std::numeric_limits<int>::max();
-		playermemory.Init('.', width, height);
+		playermemory.Init('`', width, height);
 		fogofwar.Init(true, width, height);
 		
 		staticlight.Init({ 0, 0, 0 }, width, height);
