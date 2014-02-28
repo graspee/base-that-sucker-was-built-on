@@ -1,5 +1,5 @@
 #pragma once
-#define uint unsigned int
+
 #define ASSET(x) "c:\\users\\graspee\\devel\\"##x
 
 //global vars for sprites
@@ -13,7 +13,7 @@ void spriteinit(void){
 	//load my sprites from pango sprite editor
 
 	std::ifstream ifile;//srsnaobg.psf
-	ifile.open(ASSET("bloopront2.psf"), std::ios::in | std::ios::binary);
+	ifile.open(ASSET("kobbies.psf"), std::ios::in | std::ios::binary);
 	char bigbuffer[4 * 16 * 16];
 	char buffer[4];
 	for (int s = 0; s < 40; s++){

@@ -29,6 +29,7 @@
 
 #include "windows.h"
 #undef max
+typedef unsigned int uint;
 
 inline unsigned int clamp(unsigned int x,unsigned int low, unsigned int high){
 	if (x <= low)return low;
@@ -71,8 +72,8 @@ SDL_Renderer *renderer;
 
 #include "sound.h"
 #include "sprites.h"
-
 #include "mapgen.h"
+
 
 #if _DEBUG
 int _tmain(int argc, _TCHAR* argv[])
@@ -81,9 +82,12 @@ int main(int argc, char* args[])
 #endif
 {
 	//RLMap testmap(80, 50);
+	
+	lil::randseed();
 
-
-	randomlevel();//REMOVE
+	RLMap testmap(mapwidth, mapheight);
+	testmap.genlevel_rooms();
+	testmap.QuickdumpToConsole();
 
 //#include "notomap.h"
 

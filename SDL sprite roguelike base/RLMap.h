@@ -10,7 +10,7 @@ struct ColouredLight {
 class RLMap {
 private:
 
-	typedef unsigned int uint;
+	
 	
 	static const int multipliers[4][8];
 
@@ -65,14 +65,14 @@ public:
 	RLMap(int _w, int _h) :
 		width(_w), height(_h) {
 
-		displaychar.Init('`', width, height);
+		displaychar.Init(0, width, height);
 		passable.Init(true, width, height);
 		blocks_sight.Init(false, width, height);
 		distance.Init(width, height);
 		in_FOV.Init(false, width, height);
 		FOV_set_this_run.Init(false, width, height);
 		maxint = std::numeric_limits<int>::max();
-		playermemory.Init('`', width, height);
+		playermemory.Init(0, width, height);
 		fogofwar.Init(true, width, height);
 		
 		staticlight.Init({ 0, 0, 0 }, width, height);
@@ -642,7 +642,17 @@ public:
 		ff(callx, cally);
 	}
 
-
+		void genlevel_rooms();
+		void QuickdumpToConsole(){
+			for (size_t y = 0; y < height; y++)
+				{
+					for (size_t x = 0; x < width; x++)
+					{
+						std::cout << displaychar.at(x, y);
+					}
+					std::cout << std::endl;
+				}
+		}
 
 };
 

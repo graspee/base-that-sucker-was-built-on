@@ -232,40 +232,7 @@ struct Patch {
 			}
 		}
 	}
-	bool FloodFill(int x, int y){
-		if (x<0 || y<0 || x>=cells.width || y>=cells.height)return false;
-		if (cells.at(x,y) != 'F')return false;
-		cells.at(x, y) = EMPTY;
-		floodcount++;
-		FloodFill(x - 1, y);
-		FloodFill(x + 1, y);
-		FloodFill(x, y - 1);
-		FloodFill(x, y + 1);
-	}
-	bool FloodConnectTest(){
-		int cellcount = 0;
-		bool virgin = true;
-		uint xt = 0, yt = 0;
-		for (size_t y = 0; y < cells.height; y++)
-		{
-			for (size_t x = 0; x < cells.width; x++)
-			{
-				if (cells.at(x, y) == EMPTY){
-					cellcount++;	
-					cells.at(x, y) = 'F';
-					if (virgin){
-						virgin = false;
-						xt = x;
-						yt = y;
-					}
-				}
-			}
-		}
-		if (cellcount == 0)return false;
-		floodcount = 0;
-		FloodFill(xt, yt);
-		return (floodcount < cellcount) ? false : true;
-	}
+	
 };
 
 
@@ -281,13 +248,11 @@ inline void print(const std::string s){
 
 
 
-RLMap testmap(mapwidth, mapheight);
 
 
 
-void randomlevel(){
-	
-	lil::randseed();
+
+void RLMap::genlevel_rooms(){
 	
 	std::vector<Patch*> patches;
 	Patch* patch;
@@ -298,8 +263,8 @@ void randomlevel(){
 	for (int f = 0; f < numberofpatches; f++){
 		patch = new Patch(patchwidth, patchheight);							//make a new patch and
 		patches.push_back(patch);											//add it to the list of patches
-		patch->posx = (mapwidth - patchwidth) / 2;							//position patch in the middle of the map
-		patch->posy = (mapheight - patchheight) / 2;
+		patch->posx = (width - patchwidth) / 2;							//position patch in the middle of the map
+		patch->posy = (height - patchheight) / 2;
 		float degrees = (float)f * (360.0 / (float) numberofpatches);		//give patch a trajectory so they move away from the middle
 		float radians = degrees*0.0174532925;
 		patch->deltax = cos(radians);
@@ -307,12 +272,13 @@ void randomlevel(){
 	tryagain:
 		patch->patchfill();													//put room shapes into the patch
 		if (!patch->CellCountTest())goto tryagain;							//must have >=4 cells 
-		if (!patch->FloodConnectTest())goto tryagain;						//all cells must be connected
+		//if (!patch->FloodConnectTest())goto tryagain;						//all cells must be connected
+		if (!patch->cells.floodtest(EMPTY, 1))goto tryagain;
 	}
 		
 	//now we actually have our set of patches, move them outwards and 
 	//stamp them down when they don't overlap
-	//RLMap patchmap(mapwidth, mapheight);	
+	//RLMap patchmap(width, height);	
 	int num_left = numberofpatches;
 
 	while (num_left > 0){
@@ -327,13 +293,13 @@ void randomlevel(){
 						if(p->cells.at(cellx,celly) == EMPTY){//if the cell is a "room" cell
 							int mapx = p->posx + cellx;
 							int mapy = p->posy + celly;//get map pos under this cell
-							if (mapx < 0 || mapy < 0 || mapx >= mapwidth || mapy >= mapheight){//if map cell under this cell=out of bounds
+							if (mapx < 0 || mapy < 0 || mapx >= width || mapy >= height){//if map cell under this cell=out of bounds
 								p->out_of_bounds = true;//set this patch out of bounds to true
 								//print("out of bounds");
 								num_left--;//one fewer to process
 								goto NEXT_PATCH;//break to next patch
 							}//if mapx or mapy out of bounds
-							if (testmap.displaychar.at(mapx, mapy) != '`'){//if the map underneath this cell is already occupied
+							if (displaychar.at(mapx, mapy) != 0){//if the map underneath this cell is already occupied
 								goto MOVE_PHASE;//can't stamp down this turn. break to move phase
 							}
 						}//if cell is room cell
@@ -343,7 +309,7 @@ void randomlevel(){
 				for (int celly = 0; celly < patchheight; celly++){//stampdown! update map with patch
 					for (int cellx = 0; cellx < patchwidth; cellx++){
 						if (p->cells.at(cellx, celly) == EMPTY){
-							testmap.displaychar.at(p->posx + cellx, p->posy + celly) 
+							displaychar.at(p->posx + cellx, p->posy + celly) 
 								= p->cells.at(cellx, celly);
 						}
 					}
@@ -360,31 +326,34 @@ void randomlevel(){
 		}//auto p in patches
 	}
 	
-	//draw map on terminal
-	for (size_t y = 0; y < testmap.height; y++)
-	{
-		for (size_t x = 0; x < testmap.width; x++)
-		{
-			if (testmap.displaychar.at(x, y) == '`'){
-				testmap.displaychar.at(x, y) = '#';
-				testmap.passable.set(x, y, false);
-				testmap.blocks_sight.set(x, y, true);
-			}
-			else {
-				testmap.passable.set(x, y, true);
-				testmap.blocks_sight.set(x, y, false);
-			}
 
-			std::cout << testmap.displaychar.at(x, y);
+	for (size_t y = 0; y < height; y++)
+	{
+		for (size_t x = 0; x < width; x++)
+		{
+			if (displaychar.at(x, y) == 0){
+				displaychar.at(x, y) = '#';
+				passable.set(x, y, false);
+				blocks_sight.set(x, y, true);
+			}
+			else {//change this when you have stuff other than wall and floor
+
+				passable.set(x, y, true);
+				blocks_sight.set(x, y, false);
+			}
 		}
-		std::cout << std::endl;
 	}
 
-	
-
+	//cleanup
 	for (auto p : patches)delete p;
 
+	//floodtest it
+	bool itpassed = this->displaychar.floodtest(' ', 1);
+	std::cout << (itpassed ? "pass " : "fail ") << std::endl;
 	
+	if (!itpassed){
+		displaychar.ReplaceXWithY(1, ' ');
+	}
 }
 		
  	
