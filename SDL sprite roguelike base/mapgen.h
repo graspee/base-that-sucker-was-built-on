@@ -2,11 +2,11 @@
 
 #define mapwidth 80
 #define mapheight 50
-#define patchwidth 20
-#define patchheight 20
-#define numberofpatches 10
+#define patchwidth 10
+#define patchheight 10
+#define numberofpatches 75
 
-#define EMPTY '.'
+#define EMPTY ' '
 
 #include <vector>
 #include "lilhelpers.h"
@@ -18,7 +18,7 @@ struct Patch {
 	Array2D<uint8> cells;		//the actual meat of the patch (map part representing a room)
 	int floodcount = 0;			//used in floodfill test to see if shape connected
 	float deltax, deltay;		//vector as we move the patch outwards from centre
-	int posx, posy;				//position on the map
+	float  posx, posy;				//position on the map
 	bool out_of_bounds = false;		
 	bool stamped_down = false;
 	Patch(int w, int h){
@@ -274,12 +274,14 @@ struct Patch {
 
 
 
+inline void print(const std::string s){
+	std::cout << s << std::endl;
+}
 
 
 
 
-
-
+RLMap testmap(mapwidth, mapheight);
 
 
 
@@ -310,13 +312,15 @@ void randomlevel(){
 		
 	//now we actually have our set of patches, move them outwards and 
 	//stamp them down when they don't overlap
-	RLMap patchmap(mapwidth, mapheight);	
+	//RLMap patchmap(mapwidth, mapheight);	
 	int num_left = numberofpatches;
 
 	while (num_left > 0){
+	//	int upto = -1; print(" ");
 		for (auto& p : patches){
-
-			
+		//	upto++;
+		//	std::cout << upto << ((p->stamped_down) ? "SD" : "--") << "  " << ((p->out_of_bounds) ? "OOB" : "--" )
+			//	<< p->posx << " " << p->posy  << std::endl;
 			if (!p->stamped_down && !p->out_of_bounds){//if this patch is still moving
 				for (int celly = 0; celly < patchheight; celly ++){
 					for (int cellx = 0; cellx < patchwidth; cellx ++){//go through each cell
@@ -325,10 +329,11 @@ void randomlevel(){
 							int mapy = p->posy + celly;//get map pos under this cell
 							if (mapx < 0 || mapy < 0 || mapx >= mapwidth || mapy >= mapheight){//if map cell under this cell=out of bounds
 								p->out_of_bounds = true;//set this patch out of bounds to true
+								//print("out of bounds");
 								num_left--;//one fewer to process
 								goto NEXT_PATCH;//break to next patch
 							}//if mapx or mapy out of bounds
-							if (patchmap.displaychar.at(mapx, mapy) != '`'){//if the map underneath this cell is already occupied
+							if (testmap.displaychar.at(mapx, mapy) != '`'){//if the map underneath this cell is already occupied
 								goto MOVE_PHASE;//can't stamp down this turn. break to move phase
 							}
 						}//if cell is room cell
@@ -338,11 +343,12 @@ void randomlevel(){
 				for (int celly = 0; celly < patchheight; celly++){//stampdown! update map with patch
 					for (int cellx = 0; cellx < patchwidth; cellx++){
 						if (p->cells.at(cellx, celly) == EMPTY){
-							patchmap.displaychar.at(p->posx + cellx, p->posy + celly) 
+							testmap.displaychar.at(p->posx + cellx, p->posy + celly) 
 								= p->cells.at(cellx, celly);
 						}
 					}
 				}
+				//print("stampdown");
 				p->stamped_down = true;//set stamped down to true
 				num_left--;//decrease num_left
 				MOVE_PHASE://move phase
@@ -355,18 +361,30 @@ void randomlevel(){
 	}
 	
 	//draw map on terminal
-	for (size_t y = 0; y < patchmap.height; y++)
+	for (size_t y = 0; y < testmap.height; y++)
 	{
-		for (size_t x = 0; x < patchmap.width; x++)
+		for (size_t x = 0; x < testmap.width; x++)
 		{
-			std::cout << patchmap.displaychar.at(x, y);
+			if (testmap.displaychar.at(x, y) == '`'){
+				testmap.displaychar.at(x, y) = '#';
+				testmap.passable.set(x, y, false);
+				testmap.blocks_sight.set(x, y, true);
+			}
+			else {
+				testmap.passable.set(x, y, true);
+				testmap.blocks_sight.set(x, y, false);
+			}
+
+			std::cout << testmap.displaychar.at(x, y);
 		}
 		std::cout << std::endl;
 	}
 
-	int xxx = 0;
+	
 
+	for (auto p : patches)delete p;
 
+	
 }
 		
  	

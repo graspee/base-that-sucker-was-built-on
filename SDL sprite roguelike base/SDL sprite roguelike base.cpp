@@ -80,12 +80,12 @@ int _tmain(int argc, _TCHAR* argv[])
 int main(int argc, char* args[])
 #endif
 {
-	RLMap testmap(80, 50);
+	//RLMap testmap(80, 50);
 
 
 	randomlevel();//REMOVE
 
-#include "notomap.h"
+//#include "notomap.h"
 
 
 	testmap.playerx = 15;
@@ -344,8 +344,8 @@ int main(int argc, char* args[])
 		SDL_SetRenderDrawColor(renderer, 0, 225, 225, 255);
 		MINIMAP_PIXEL(testmap.playerx, testmap.playery);
 
-		print("train carriage", 500, 0, 225, 225, 225);
-		print("train carriage", 0, 0, 225, 225, 225);
+		print("work in progress", 0, 340, 225, 225, 225);
+		
 
 		SDL_RenderPresent(renderer);
 	}
