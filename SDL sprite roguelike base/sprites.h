@@ -6,7 +6,14 @@
 std::array<SDL_Texture*, 40> sprites_bg;
 std::unordered_map <std::string, SDL_Texture*> dicosprite;
 
-SDL_Texture* hobbitfont;
+SDL_Texture* hobbitfont, *titlepage;
+
+SDL_Texture* SpriteLoad(const char* name){
+	SDL_Surface* h = SDL_LoadBMP(name);
+	SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer, h);
+	SDL_FreeSurface(h);
+	return tex;
+}
 
 void spriteinit(void){
 
@@ -49,12 +56,11 @@ void spriteinit(void){
 	}
 	ifile.close();
 
-	//load "normal" sprites
-	SDL_Surface* h = SDL_LoadBMP(ASSET("hobbitfont.bmp"));
-	hobbitfont = SDL_CreateTextureFromSurface(renderer, h);
-	SDL_FreeSurface(h);
-
+	hobbitfont=SpriteLoad(ASSET("hobbitfont.bmp"));
+	titlepage = SpriteLoad(ASSET("title.bmp"));
 }
+
+
 
 void spriteexit(void){
 	//Cleanup my sprites
@@ -62,6 +68,7 @@ void spriteexit(void){
 		SDL_DestroyTexture(sprites_bg[i]);
 	//cleanup font
 	SDL_DestroyTexture(hobbitfont);
+	SDL_DestroyTexture(titlepage);
 
 
 }

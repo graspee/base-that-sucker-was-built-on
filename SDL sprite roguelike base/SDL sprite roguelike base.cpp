@@ -7,9 +7,14 @@
 #include "BitArray.h"
 
 #include <vector>
+using std::vector;
 #include <iostream>
 #include <fstream>
 #include <string>
+using std::string;
+using std::to_string;
+#include <array>
+using std::array;
 #include <list>
 #include <map>
 #include <cmath>
@@ -29,6 +34,7 @@
 
 #include "windows.h"
 #undef max
+
 typedef unsigned int uint;
 
 inline unsigned int clamp(unsigned int x,unsigned int low, unsigned int high){
@@ -70,10 +76,26 @@ void loadsprites(void);
 SDL_Window *window;
 SDL_Renderer *renderer;
 
+//"options"
+bool OPTION_fullscreen = false;
+char OPTION_res = 1;//0 1 2
+
+
+
+
 #include "sound.h"
 #include "sprites.h"
 #include "mapgen.h"
 
+#include "titlepage.h"
+
+void godown(){
+	SDL_DestroyRenderer(renderer);
+	SDL_DestroyWindow(window);
+	soundexit();
+	spriteexit();
+	SDL_Quit();
+}
 
 #if _DEBUG
 int _tmain(int argc, _TCHAR* argv[])
@@ -81,33 +103,15 @@ int _tmain(int argc, _TCHAR* argv[])
 int main(int argc, char* args[])
 #endif
 {
-	//RLMap testmap(80, 50);
 	
-	lil::randseed();
-
-	RLMap testmap(mapwidth, mapheight);
-	testmap.genlevel_rooms();
-	testmap.QuickdumpToConsole();
-
-//#include "notomap.h"
-
-
-	testmap.playerx = 15;
-	testmap.playery = 11;
-	bool lantern = false;
 
 	//int koboldx = 69, koboldy = 46;
 
 	//bool result=testmap.PathfindDijkstra(koboldx,koboldy, playerx,playery);
 	//bool result = testmap.PathfindAStar(koboldx, koboldy, playerx, playery);
 
-
-
-	//testmap.InitializeLightmap();
-
-
 	SDL_Init(SDL_INIT_EVERYTHING);
-	window = SDL_CreateWindow("HalloweenRL",
+	window = SDL_CreateWindow("genericRL",
 		SDL_WINDOWPOS_UNDEFINED,
 		SDL_WINDOWPOS_UNDEFINED,
 		1280, 720,
@@ -117,21 +121,32 @@ int main(int argc, char* args[])
 	SDL_RenderSetLogicalSize(renderer, 640, 360);
 
 
-
 	SDL_RenderClear(renderer);
 	SDL_Rect rect{ 0, 0, 16, 16 };
 
-
-
 	SDL_Event myevent;
-
-
 
 	soundinit();
 	spriteinit();
 
 
+	if (!dotitlepage()){
+		godown();
+		return 0;
+	}
+	
+	lil::randseed();
+
 	playsound();
+
+
+	RLMap testmap(mapwidth, mapheight);
+	testmap.genlevel_rooms();
+	testmap.QuickdumpToConsole();
+
+	testmap.playerx = 15;
+	testmap.playery = 11;
+	bool lantern = false;
 
 	while (1){
 		//while (!_kbhit()){}
@@ -356,10 +371,6 @@ int main(int argc, char* args[])
 
 CleanupAndExit:
 
-	SDL_DestroyRenderer(renderer);
-	SDL_DestroyWindow(window);
-	soundexit();
-	spriteexit();
-	SDL_Quit();
+	godown();
 	return 0;
 }
