@@ -78,10 +78,20 @@ SDL_Renderer *renderer;
 
 //"options"
 bool OPTION_fullscreen = false;
-char OPTION_res = 1;//0 1 2
+char OPTION_res = 1;//0 1 2//myevent.key.keysym.scancode
+int OPTION_buttons [] = {	SDL_SCANCODE_KP_5,//WAIT
+							SDL_SCANCODE_KP_8,//N
+							SDL_SCANCODE_KP_9,//NE
+							SDL_SCANCODE_KP_6,//E
+							SDL_SCANCODE_KP_3,//SE
+							SDL_SCANCODE_KP_2,//S
+							SDL_SCANCODE_KP_1,//SW
+							SDL_SCANCODE_KP_4,//W
+							SDL_SCANCODE_KP_7,//NW
+							SDL_SCANCODE_T }; //LANTERN
 
-
-
+const string button_names [] = { "WAIT", "NORTH", "NORTH-EAST", "EAST", "SOUTH-EAST",
+"SOUTH", "SOUTH-WEST", "WEST", "NORTH-WEST", "LANTERN" };
 
 #include "sound.h"
 #include "sprites.h"
@@ -135,6 +145,20 @@ int main(int argc, char* args[])
 		return 0;
 	}
 	
+	//SDL_GameController *controller = NULL;
+	//for (int i = 0; i < SDL_NumJoysticks(); ++i) {
+	//	if (SDL_IsGameController(i)) {
+	//		controller = SDL_GameControllerOpen(i);
+	//		if (controller) {
+	//			break;
+	//		}
+	//		else {
+	//			//fprintf(stderr, "Could not open gamecontroller %i: %s\n", i, SDL_GetError());
+	//		}
+	//	}
+	//}
+	
+
 	lil::randseed();
 
 	playsound();
@@ -155,6 +179,12 @@ int main(int argc, char* args[])
 
 		//int a = _getch();
 
+		/*if (myevent.type == SDL_CONTROLLERBUTTONDOWN){
+			std::cout << (int)myevent.cbutton.button << " " << (int)myevent.cbutton.state << std::endl;
+		}
+		if (myevent.type == SDL_CONTROLLERAXISMOTION){
+			std::cout << (int) myevent.caxis.axis << " " << (int) myevent.caxis.value << std::endl;
+		}*/
 
 		if (myevent.type == SDL_KEYDOWN){
 			switch (myevent.key.keysym.scancode){

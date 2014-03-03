@@ -1,6 +1,64 @@
 #pragma once
 
+int GetKey(){
+	static SDL_Event e;
+	while (1){
+		int a = SDL_WaitEvent(&e);
+		if (e.type == SDL_KEYDOWN){
+			return e.key.keysym.scancode;
+		}
+	}
+}
 
+void doredefkeys(){
+	SDL_RenderClear(renderer);
+	print("REDEFINE KEYS:", 0, 0, 225, 225, 40);
+	//print("(Physical keys, not logical are shown)", 0, 8, 225, 225, 40);
+	print("Up and Down arrows to move, enter/return to set key", 0, 16, 225, 225, 0);
+	SDL_RenderPresent(renderer);
+	int x = 0;
+	for (auto f : OPTION_buttons){
+		print(button_names[x], 150, 50 + 20 * x, 40, 225, 225);
+		print(SDL_GetKeyName(SDL_GetKeyFromScancode(SDL_Scancode(f))), 250, 50 + 20 * x, 40, 75, 250);
+		x++;
+	}
+	SDL_RenderPresent(renderer);
+
+	int highlighted = 0;
+	
+	while (1){
+		int k = GetKey();
+		switch (k){
+		case SDL_SCANCODE_DOWN:
+			break;
+		case SDL_SCANCODE_UP:
+			break;
+		case SDL_SCANCODE_RETURN: case SDL_SCANCODE_RETURN2: case SDL_SCANCODE_KP_ENTER:
+			break;
+		}
+	}
+
+
+}
+
+void setres(char x){
+	//if (OPTION_res == x)return;//already that res
+	OPTION_res = x;
+	//if fullscreen we have to dip back into windowed to change then go back
+	if (OPTION_fullscreen)SDL_SetWindowFullscreen(window, 0);
+	switch (x){
+	case 0:
+		SDL_SetWindowSize(window, 640, 360);
+		break;
+	case 1:
+		SDL_SetWindowSize(window, 1280, 720);
+		break;
+	case 2:
+		SDL_SetWindowSize(window, 1920, 1080);
+		break;
+	}
+	if (OPTION_fullscreen)SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
+}
 int displaymainmenu(vector<string>& s, bool istop = false){
 	SDL_RenderCopy(renderer, titlepage, NULL, NULL);
 
@@ -16,31 +74,31 @@ int displaymainmenu(vector<string>& s, bool istop = false){
 	}
 	SDL_RenderPresent(renderer);
 
-	SDL_Event sdle;
+
 	int chosen = 0;
 	while (1){
-		int a = SDL_WaitEvent(&sdle);
-		if (sdle.type == SDL_KEYDOWN){
-			switch (sdle.key.keysym.sym){
-				case SDLK_1: case SDLK_KP_1: chosen = 1; break;
-				case SDLK_2: case SDLK_KP_2: chosen = 2; break;
-				case SDLK_3: case SDLK_KP_3: chosen = 3; break;
-				case SDLK_4: case SDLK_KP_4: chosen = 4; break;
-				case SDLK_5: case SDLK_KP_5: chosen = 5; break;
-				case SDLK_6: case SDLK_KP_6: chosen = 6; break;
-				case SDLK_7: case SDLK_KP_7: chosen = 7; break;
-				case SDLK_8: case SDLK_KP_8: chosen = 8; break;
-				case SDLK_9: case SDLK_KP_9: chosen = 9; break;
-				case SDLK_ESCAPE:
-					if (!istop)chosen = s.size() + 1;
-					break;
-				default: chosen = 0; break;
-			}
-			if ((istop && chosen > 0 && chosen <= s.size()) ||
-				(!istop && chosen > 0 && chosen <= s.size() + 1))return chosen;
+		int a = GetKey();
+
+		switch (a){
+		case SDL_SCANCODE_1: case SDL_SCANCODE_KP_2: chosen = 1; break;
+		case SDL_SCANCODE_2: case SDL_SCANCODE_KP_3: chosen = 2; break;
+		case SDL_SCANCODE_3: case SDL_SCANCODE_KP_4: chosen = 3; break;
+		case SDL_SCANCODE_4: case SDL_SCANCODE_KP_5: chosen = 4; break;
+		case SDL_SCANCODE_5: case SDL_SCANCODE_KP_6: chosen = 5; break;
+		case SDL_SCANCODE_6: case SDL_SCANCODE_KP_7: chosen = 6; break;
+		case SDL_SCANCODE_7: case SDL_SCANCODE_KP_8: chosen = 7; break;
+		case SDL_SCANCODE_8: case SDL_SCANCODE_KP_9: chosen = 8; break;
+		case SDL_SCANCODE_9: case SDL_SCANCODE_KP_1: chosen = 9; break;
+		case SDL_SCANCODE_ESCAPE:
+			if (!istop)chosen = s.size() + 1;
+			break;
+		default: chosen = 0; break;
 		}
+		if ((istop && chosen > 0 && chosen <= s.size()) ||
+			(!istop && chosen > 0 && chosen <= s.size() + 1))return chosen;
 
 	}
+	
 }
 
 
@@ -71,22 +129,25 @@ labelvideo:
 	switch (choice){
 		case 1://fullscreen
 			SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
+			OPTION_fullscreen = true;
 			goto labelvideo;
 			break;
 		case 2://windowed
 			SDL_SetWindowFullscreen(window, 0);
+			OPTION_fullscreen = false;
+			setres(OPTION_res);
 			goto labelvideo;
 			break;
 		case 3://small 
-			SDL_SetWindowSize(window, 640, 360);
+			setres(0);
 			goto labelvideo;
 			break;
 		case 4://medium
-			SDL_SetWindowSize(window, 1280, 720);
+			setres(1);
 			goto labelvideo;
 			break;
 		case 5://large
-			SDL_SetWindowSize(window,1920, 1080);
+			setres(2);
 			goto labelvideo;
 			break;
 		case 6:goto labeloptions; //back
@@ -97,7 +158,10 @@ labelcontrols:
 	case 1:break;//use controller
 	case 2:break;//use kbd
 	case 3:break;//redef controller
-	case 4:break;//redef kbd
+	case 4://redef kbd
+		doredefkeys();
+		goto labelcontrols;
+		break;
 	case 5:goto labeloptions; //back
 
 	}
