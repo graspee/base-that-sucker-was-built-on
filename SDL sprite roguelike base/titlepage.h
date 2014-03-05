@@ -10,34 +10,87 @@ int GetKey(){
 	}
 }
 
+inline void drawarrow(char pos, bool draw = true){
+	static SDL_Rect r = { 130, 0, 12, 8 };
+	
+	if (draw){
+		print(">>", 130, 50 + 20 * pos, 175, 200, 255);
+	} else {
+		r.y = 50 + 20 * pos;
+		SDL_RenderFillRect(renderer,&r);
+	}
+	SDL_RenderPresent(renderer);
+}
+
+inline void drawblankline(char pos){
+	static SDL_Rect r = { 250, 0, 640 - 251, 8 };
+	r.y = 50 + 20 * pos;
+	SDL_RenderFillRect(renderer, &r);
+	SDL_RenderPresent(renderer);
+}
+
 void doredefkeys(){
+	//make temp copy of key bindings
+	vector<int> OPTION_buttons_copy=OPTION_buttons;
+	
 	SDL_RenderClear(renderer);
 	print("REDEFINE KEYS:", 0, 0, 225, 225, 40);
-	//print("(Physical keys, not logical are shown)", 0, 8, 225, 225, 40);
-	print("Up and Down arrows to move, enter/return to set key", 0, 16, 225, 225, 0);
+	print("<esc> to cancel changes and go back, Enter/Return to accept them and go back.", 0, 16, 225, 225, 40);
+	print("Up and Down arrows to move, space to set key.", 0, 8, 225, 225, 0);
 	SDL_RenderPresent(renderer);
-	int x = 0;
-	for (auto f : OPTION_buttons){
-		print(button_names[x], 150, 50 + 20 * x, 40, 225, 225);
-		print(SDL_GetKeyName(SDL_GetKeyFromScancode(SDL_Scancode(f))), 250, 50 + 20 * x, 40, 75, 250);
-		x++;
+	int howmany = 0;
+	for (auto f : OPTION_buttons_copy){
+		print(button_names[howmany], 150, 50 + 20 * howmany, 40, 225, 225);
+		print(SDL_GetKeyName(SDL_GetKeyFromScancode(SDL_Scancode(f))), 250, 50 + 20 * howmany, 40, 75, 250);
+		howmany++;
 	}
+	howmany--;
 	SDL_RenderPresent(renderer);
 
 	int highlighted = 0;
-	
+	drawarrow(0);
+
+
+
 	while (1){
 		int k = GetKey();
 		switch (k){
 		case SDL_SCANCODE_DOWN:
+			drawarrow(highlighted, false);
+			highlighted++;
+			if (highlighted > howmany)highlighted = 0;
+			drawarrow(highlighted);
+			continue;
 			break;
 		case SDL_SCANCODE_UP:
+			drawarrow(highlighted, false);
+			highlighted--;
+			if (highlighted == -1)highlighted = howmany;
+			drawarrow(highlighted);
+			continue;
 			break;
-		case SDL_SCANCODE_RETURN: case SDL_SCANCODE_RETURN2: case SDL_SCANCODE_KP_ENTER:
-			break;
+		case SDL_SCANCODE_SPACE:
+			{
+				drawblankline(highlighted);
+				print("  ???    Press a key or press <esc> to cancel", 250, 50 + 20 * highlighted, 240, 50, 50);
+				SDL_RenderPresent(renderer);
+				int a = GetKey();
+				if (a != SDL_SCANCODE_ESCAPE)OPTION_buttons_copy[highlighted] = a;
+				drawblankline(highlighted);
+				print(SDL_GetKeyName(SDL_GetKeyFromScancode(SDL_Scancode(OPTION_buttons_copy[highlighted]))), 250, 50 + 20 * highlighted, 40, 75, 250);
+				SDL_RenderPresent(renderer);
+				break; 
+			}
+			case SDL_SCANCODE_RETURN: case SDL_SCANCODE_RETURN2: case SDL_SCANCODE_KP_ENTER:
+				OPTION_buttons = OPTION_buttons_copy ;
+				return;
+				break;
+			case SDL_SCANCODE_ESCAPE:
+				return;
+				break;
 		}
 	}
-
+	
 
 }
 

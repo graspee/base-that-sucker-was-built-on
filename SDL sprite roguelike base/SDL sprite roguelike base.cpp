@@ -77,9 +77,10 @@ SDL_Window *window;
 SDL_Renderer *renderer;
 
 //"options"
+//need defaults, loading from disk blah blah
 bool OPTION_fullscreen = false;
 char OPTION_res = 1;//0 1 2//myevent.key.keysym.scancode
-int OPTION_buttons [] = {	SDL_SCANCODE_KP_5,//WAIT
+vector<int> OPTION_buttons = {	SDL_SCANCODE_KP_5,//WAIT
 							SDL_SCANCODE_KP_8,//N
 							SDL_SCANCODE_KP_9,//NE
 							SDL_SCANCODE_KP_6,//E
