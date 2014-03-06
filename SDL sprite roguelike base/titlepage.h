@@ -83,6 +83,7 @@ void doredefkeys(){
 			}
 			case SDL_SCANCODE_RETURN: case SDL_SCANCODE_RETURN2: case SDL_SCANCODE_KP_ENTER:
 				OPTION_buttons = OPTION_buttons_copy ;
+				options_dirty = true;
 				return;
 				break;
 			case SDL_SCANCODE_ESCAPE:
@@ -183,24 +184,29 @@ labelvideo:
 		case 1://fullscreen
 			SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
 			OPTION_fullscreen = true;
+			options_dirty = true;
 			goto labelvideo;
 			break;
 		case 2://windowed
 			SDL_SetWindowFullscreen(window, 0);
 			OPTION_fullscreen = false;
 			setres(OPTION_res);
+			options_dirty = true;
 			goto labelvideo;
 			break;
 		case 3://small 
 			setres(0);
+			options_dirty = true;
 			goto labelvideo;
 			break;
 		case 4://medium
 			setres(1);
+			options_dirty = true;
 			goto labelvideo;
 			break;
 		case 5://large
 			setres(2);
+			options_dirty = true;
 			goto labelvideo;
 			break;
 		case 6:goto labeloptions; //back

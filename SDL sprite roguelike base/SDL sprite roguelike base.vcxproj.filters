@@ -48,6 +48,9 @@
     <ClInclude Include="titlepage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="windowsconsolestuff.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -72,9 +75,12 @@
     <Image Include="..\media\hobbitfont.bmp">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="..\media\title.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\media\bloopront2.psf">
+    <None Include="..\media\kobbies.psf">
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>

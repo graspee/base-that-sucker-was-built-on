@@ -28,12 +28,8 @@ using std::array;
 #include <cmath>
 
 #include "SDL.h"
-//#include "SDL_main.h"
-//#include "SDL_events.h"
 
 
-#include "windows.h"
-#undef max
 
 typedef unsigned int uint;
 
@@ -45,25 +41,9 @@ inline unsigned int clamp(unsigned int x,unsigned int low, unsigned int high){
 
 int fprintf(FILE * stream, const char * format, ...){ return 0; }
 
-#define NORMAL FOREGROUND_BLUE|FOREGROUND_GREEN|FOREGROUND_RED
-#define BRIGHT FOREGROUND_INTENSITY|FOREGROUND_BLUE|FOREGROUND_GREEN|FOREGROUND_RED
-#define RED FOREGROUND_RED|FOREGROUND_INTENSITY
-#define BLUE FOREGROUND_BLUE|FOREGROUND_INTENSITY
-#define GREEN FOREGROUND_GREEN|FOREGROUND_INTENSITY
-#define CYAN FOREGROUND_GREEN|FOREGROUND_BLUE|FOREGROUND_INTENSITY
-#define YELLOW FOREGROUND_GREEN | FOREGROUND_RED| FOREGROUND_INTENSITY
-#define DARKBLUE FOREGROUND_BLUE
-#define DARKYELLOW FOREGROUND_GREEN | FOREGROUND_RED
 
-void concol(int c){
-	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);  // Get handle to standard output
-	SetConsoleTextAttribute(hConsole, c);
-}
 
-void concurspos(int x, int y){
-	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);  // Get handle to standard output
-	SetConsoleCursorPosition(hConsole, { x, y });
-}
+
 
 #define MAX(a,b) ( (a>b)?a:b )
 #define MIN(a,b) ( (a<b)?a:b )
@@ -77,7 +57,7 @@ SDL_Window *window;
 SDL_Renderer *renderer;
 
 //"options"
-//need defaults, loading from disk blah blah
+//these are the defaults
 bool OPTION_fullscreen = false;
 char OPTION_res = 1;//0 1 2//myevent.key.keysym.scancode
 vector<int> OPTION_buttons = {	SDL_SCANCODE_KP_5,//WAIT
@@ -90,6 +70,10 @@ vector<int> OPTION_buttons = {	SDL_SCANCODE_KP_5,//WAIT
 							SDL_SCANCODE_KP_4,//W
 							SDL_SCANCODE_KP_7,//NW
 							SDL_SCANCODE_T }; //LANTERN
+bool options_dirty = false; //if set to true in titlepage we need to write options on getting back
+
+
+unsigned char Scancode_to_command[512];
 
 const string button_names [] = { "WAIT", "NORTH", "NORTH-EAST", "EAST", "SOUTH-EAST",
 "SOUTH", "SOUTH-WEST", "WEST", "NORTH-WEST", "LANTERN" };
@@ -99,6 +83,54 @@ const string button_names [] = { "WAIT", "NORTH", "NORTH-EAST", "EAST", "SOUTH-E
 #include "mapgen.h"
 
 #include "titlepage.h"
+
+void loadopts(){
+	//seems bugged
+	char buffer[128];
+	std::ifstream file(ASSET("optionz.dat"));
+	if (!file)return;
+	file.read(buffer, 128);
+	OPTION_fullscreen = (buffer[0] == 0) ? false : true;
+	OPTION_res = buffer[1];
+	int siez=OPTION_buttons.size();
+	for (int upto=0; upto < siez; upto++){
+		OPTION_buttons[upto] = buffer[upto+2];
+	}
+	file.close();
+}
+
+void saveopts(){
+	char buffer[128];
+	std::ofstream file(ASSET("optionz.dat"));
+	
+	buffer[0] = (OPTION_fullscreen == false) ? 0 : 1;
+	buffer[1] = OPTION_res;
+	int upto = 2;
+	for (auto f: OPTION_buttons){
+		buffer[upto++] = f;
+	}
+	file.write(buffer, 128);
+	file.close();
+}
+
+void comeup(){
+	int x = 640, y = 360;
+	x *= OPTION_res + 1;
+	y *= OPTION_res + 1;
+	SDL_Init(SDL_INIT_EVERYTHING);
+	window = SDL_CreateWindow("genericRL",
+		SDL_WINDOWPOS_UNDEFINED,
+		SDL_WINDOWPOS_UNDEFINED,
+		x, y,
+		0);
+	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
+	SDL_RenderSetLogicalSize(renderer, 640, 360);
+	SDL_RenderClear(renderer);
+	if (OPTION_fullscreen)SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
+	soundinit();
+	spriteinit();
+}
 
 void godown(){
 	SDL_DestroyRenderer(renderer);
@@ -115,49 +147,31 @@ int main(int argc, char* args[])
 #endif
 {
 	
+	loadopts(); //load options from disk if there
 
-	//int koboldx = 69, koboldy = 46;
-
-	//bool result=testmap.PathfindDijkstra(koboldx,koboldy, playerx,playery);
-	//bool result = testmap.PathfindAStar(koboldx, koboldy, playerx, playery);
-
-	SDL_Init(SDL_INIT_EVERYTHING);
-	window = SDL_CreateWindow("genericRL",
-		SDL_WINDOWPOS_UNDEFINED,
-		SDL_WINDOWPOS_UNDEFINED,
-		1280, 720,
-		0);
-	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
-	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
-	SDL_RenderSetLogicalSize(renderer, 640, 360);
+	comeup(); //initialize stuff
 
 
-	SDL_RenderClear(renderer);
-	SDL_Rect rect{ 0, 0, 16, 16 };
-
-	SDL_Event myevent;
-
-	soundinit();
-	spriteinit();
+	
+	
+	
 
 
+	//this is where we go back to at the end of a game
+	gameloop:
 	if (!dotitlepage()){
 		godown();
 		return 0;
 	}
 	
-	//SDL_GameController *controller = NULL;
-	//for (int i = 0; i < SDL_NumJoysticks(); ++i) {
-	//	if (SDL_IsGameController(i)) {
-	//		controller = SDL_GameControllerOpen(i);
-	//		if (controller) {
-	//			break;
-	//		}
-	//		else {
-	//			//fprintf(stderr, "Could not open gamecontroller %i: %s\n", i, SDL_GetError());
-	//		}
-	//	}
-	//}
+	if (options_dirty) saveopts();
+
+	for (auto f = 0; f < 512; f++)Scancode_to_command[f] = 255;
+	char b = 0;
+	for (auto f : OPTION_buttons)Scancode_to_command[f] = b++;
+	Scancode_to_command[41] = 200;
+
+
 	
 
 	lil::randseed();
@@ -173,42 +187,64 @@ int main(int argc, char* args[])
 	testmap.playery = 11;
 	bool lantern = false;
 
+	SDL_Event myevent;
+
 	while (1){
-		//while (!_kbhit()){}
+		
 
 		int a = SDL_WaitEvent(&myevent);
 
-		//int a = _getch();
 
-		/*if (myevent.type == SDL_CONTROLLERBUTTONDOWN){
-			std::cout << (int)myevent.cbutton.button << " " << (int)myevent.cbutton.state << std::endl;
-		}
-		if (myevent.type == SDL_CONTROLLERAXISMOTION){
-			std::cout << (int) myevent.caxis.axis << " " << (int) myevent.caxis.value << std::endl;
-		}*/
+	
 
 		if (myevent.type == SDL_KEYDOWN){
-			switch (myevent.key.keysym.scancode){
-			case SDL_SCANCODE_T:
+			unsigned char command = Scancode_to_command[myevent.key.keysym.scancode];
+			
+			switch (command){
+			case 9:
 				lantern = !lantern;
 				break;
-			case SDL_SCANCODE_KP_2:
+			case 5://s
 				if (testmap.playery<testmap.height - 1 &&
 					testmap.passable.get(testmap.playerx, testmap.playery + 1))
 					testmap.playery++; break;
-			case SDL_SCANCODE_KP_8:
+			case 1://n
 				if (testmap.playery>0 &&
 					testmap.passable.get(testmap.playerx, testmap.playery - 1))
 					testmap.playery--; break;
-			case SDL_SCANCODE_KP_6:
+			case 3://e
 				if (testmap.playerx<testmap.width - 1 &&
 					testmap.passable.get(testmap.playerx + 1, testmap.playery))
 					testmap.playerx++; break;
-			case SDL_SCANCODE_KP_4:
+			case 7://w
 				if (testmap.playerx>0 &&
 					testmap.passable.get(testmap.playerx - 1, testmap.playery))
 					testmap.playerx--; break;
-			case SDL_SCANCODE_ESCAPE:
+			case 2://ne
+				if (testmap.playery > 0 && testmap.playerx<testmap.width - 1 &&
+					testmap.passable.get(testmap.playerx + 1, testmap.playery - 1))
+				{
+					testmap.playery--; testmap.playerx++;
+				} break;
+			case 8://nw
+				if (testmap.playery>0 && testmap.playerx > 0 &&
+					testmap.passable.get(testmap.playerx - 1, testmap.playery - 1))
+				{
+					testmap.playery--; testmap.playerx--;
+				} break;
+			case 4://se
+				if (testmap.playery < testmap.height - 1 && testmap.playerx < testmap.width - 1 &&
+					testmap.passable.get(testmap.playerx + 1, testmap.playery + 1))
+				{
+					testmap.playery++; testmap.playerx++;
+				}break;
+			case 6://sw
+				if (testmap.playery<testmap.height - 1 && testmap.playerx>0 &&
+					testmap.passable.get(testmap.playerx - 1, testmap.playery + 1))
+				{
+					testmap.playery++; testmap.playerx--;
+				}break;
+			case 200://esc. can't be changed
 				goto CleanupAndExit;
 				break;
 
@@ -240,7 +276,7 @@ int main(int argc, char* args[])
 		if (testmap.playerx>(testmap.width - (XHALF + 1)))originx = testmap.width - XSIZE;
 		if (testmap.playery>(testmap.height - (YHALF + 1)))originy = testmap.height - YSIZE;
 
-
+		SDL_Rect rect{ 0, 0, 16, 16 };
 
 		for (size_t y = originy; y < originy + YSIZE; y++)
 		{
@@ -314,11 +350,7 @@ int main(int argc, char* args[])
 
 
 					MINIMAP_PIXEL(x, y);
-					//SDL_RenderDrawPoint(renderer, 640 - testmap.width*2 + x*2, y*2);
-					//SDL_RenderDrawPoint(renderer, 1+640 - testmap.width * 2 + x * 2, y * 2);
-					//SDL_RenderDrawPoint(renderer, 640 - testmap.width * 2 + x * 2, 1+y * 2);
-					//SDL_RenderDrawPoint(renderer, 1+640 - testmap.width * 2 + x * 2, 1+y * 2);
-					//}
+					
 				}//begin not in fov
 				else {
 					if (!testmap.fogofwar.get(x, y)){
@@ -343,25 +375,7 @@ int main(int argc, char* args[])
 							ti = dicosprite.at("floor");
 							break;
 						}
-							/*case '.':
-							ti = dicosprite.at("floor bp");
-							break;
-						case '#':
-							ti = dicosprite.at("wall diag bp");
-							break;
-						case '+':
-							ti = dicosprite.at("torch lit bp");
-							break;
-						case 'L':
-							ti = dicosprite.at("lava bp");
-							break;
-						case '~':
-							ti = dicosprite.at("water bp");
-							break;
-						default:
-							ti = dicosprite.at("floor bp");
-							break;*/
-						//}
+						
 						SDL_SetTextureColorMod(ti, 0, 0, 75);
 					}
 					else {
@@ -369,22 +383,8 @@ int main(int argc, char* args[])
 					}
 					SDL_RenderCopy(renderer, ti, NULL, &rect);
 				}
-
-				//if (testmap.fogofwar.get(x, y)){
-				//if (x == testmap.playerx && y == testmap.playery){
-				//if (testmap.in_FOV.get(x, y)){
-				//if (testmap.staticlight.at(x, y) + testmap.dynamiclight.at(x, y)> 25){
-				//else if (testmap.staticlight.at(x, y) + testmap.dynamiclight.at(x, y)> 0){
-				//std::cout << testmap.displaychar.at(x, y);
-				//std::cout << testmap.playermemory.at(x, y);
 			}
 		}
-
-
-
-
-
-
 
 		rect.x = (testmap.playerx - originx) * 16;
 		rect.y = (testmap.playery - originy) * 16;
@@ -396,7 +396,6 @@ int main(int argc, char* args[])
 
 		print("work in progress", 0, 340, 225, 225, 225);
 		
-
 		SDL_RenderPresent(renderer);
 	}
 

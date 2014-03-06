@@ -91,6 +91,7 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="titlepage.h" />
+    <ClInclude Include="windowsconsolestuff.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Array2D.cpp" />
@@ -102,13 +103,14 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\media\bloopront2.psf" />
+    <None Include="..\media\kobbies.psf" />
   </ItemGroup>
   <ItemGroup>
     <Media Include="..\media\downstairs.wav" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\media\hobbitfont.bmp" />
+    <Image Include="..\media\title.bmp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
