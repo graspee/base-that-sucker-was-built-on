@@ -85,9 +85,9 @@ const string button_names [] = { "WAIT", "NORTH", "NORTH-EAST", "EAST", "SOUTH-E
 #include "titlepage.h"
 
 void loadopts(){
-	//seems bugged
 	char buffer[128];
-	std::ifstream file(ASSET("optionz.dat"));
+	std::ifstream file;
+	file.open((ASSET("optionz.dat")), std::ios::in | std::ios::binary);
 	if (!file)return;
 	file.read(buffer, 128);
 	OPTION_fullscreen = (buffer[0] == 0) ? false : true;
@@ -101,8 +101,8 @@ void loadopts(){
 
 void saveopts(){
 	char buffer[128];
-	std::ofstream file(ASSET("optionz.dat"));
-	
+	std::ofstream file;
+	file.open(ASSET("optionz.dat"),std::ios::out | std::ios::binary);
 	buffer[0] = (OPTION_fullscreen == false) ? 0 : 1;
 	buffer[1] = OPTION_res;
 	int upto = 2;

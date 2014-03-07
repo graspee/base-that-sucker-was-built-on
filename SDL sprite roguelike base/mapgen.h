@@ -6,6 +6,7 @@
 #define patchheight 10
 #define numberofpatches 75
 
+
 #define EMPTY ' '
 
 #include <vector>
@@ -347,13 +348,24 @@ void RLMap::genlevel_rooms(){
 	//cleanup
 	for (auto p : patches)delete p;
 
-	//floodtest it
-	bool itpassed = this->displaychar.floodtest(' ', 1);
-	std::cout << (itpassed ? "pass " : "fail ") << std::endl;
-	
-	if (!itpassed){
-		displaychar.ReplaceXWithY(1, ' ');
+	//add static lights
+	for (int ly = 0; ly < mapheight; ly += 10){
+		for (int lx = 0; lx < mapwidth; lx += 10){
+			int tentx = lx + lil::rand(0, 9);
+			int tenty = ly + lil::rand(0, 9);
+			if (tentx >= mapwidth || tenty >= mapheight)print("ERROR OUT OF BOUNDS");
+			displaychar.at(tentx, tenty) = '+';
+			do_fov_foralight(tentx, tenty, 9, { 255, 255, 128 });
+		}
 	}
+
+
+	//floodtest it
+	//bool itpassed = this->displaychar.floodtest(' ', 1);
+	//std::cout << (itpassed ? "pass " : "fail ") << std::endl;
+	//if (!itpassed){
+	//	displaychar.ReplaceXWithY(1, ' ');
+	//}
 }
 		
  	
