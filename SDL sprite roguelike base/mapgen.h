@@ -247,10 +247,53 @@ inline void print(const std::string s){
 }
 
 
+//looks in neighbours of x,y for the sought character.
+//bool RLMap::CheckAllSidesAndPickOne(int x,int y,char seek,int& xout, int&yout){
+//	vector <pair<int,int>> pool;
+//	if (x > 0 && displaychar.at(x - 1, y) == seek)pool.push_back(make_pair(x - 1, y));
+//	if (y > 0 && displaychar.at(x, y - 1) == seek)pool.push_back(make_pair(x , y-1));
+//	if (x < width - 1 && displaychar.at(x + 1, y) == seek)pool.push_back(make_pair(x +1, y));
+//	if (y < height - 1 && displaychar.at(x, y + 1) == seek)pool.push_back(make_pair(x , y+1));
+//	if (pool.size() == 0)return false;
+//	pair<int, int> which = lil::randmember(pool);
+//	xout=which.first, yout=which.second;
+//	return true;
+//}
 
+int RLMap::shootray(int x, int y, int deltax, int deltay, char seek){
+	int currentx = x, currenty = y;
+	while (1){
+		currentx += deltax, currenty += deltay;
+		if (currentx < 0 || currenty < 0 || currentx >= width || currenty >= height)return -1;
+		if (displaychar.at(currentx, currenty) == seek){
+			return( (deltax != 0) ? abs(x - currentx) : abs(y - currenty));
+		}
+	}
+}
+bool RLMap::shootrays(int x, int y, char seek, int& outx, int& outy, char &direction,bool fudge){
+	vector<char> v;
+	int lowest = 999;
+	for (char f = 0; f < 4; f++){
+		int temp = shootray(x, y, lil::deltax[f], lil::deltay[f], seek);
+		if (temp != -1){
+			if (temp < lowest){
+				lowest = temp;
+				v.clear();
+			}
+			if (temp <= lowest){
+				v.push_back(f);
+			}
+		}
+	}
+	if (lowest == 999)return false;
+	direction = lil::randmember(v);
+	if (fudge)lowest--;
+	
+	outx = x+(lowest*lil::deltax[direction]);
+	outy = y+(lowest*lil::deltay[direction]);
+	return true;
 
-
-
+}
 
 
 void RLMap::genlevel_rooms(){
@@ -354,8 +397,24 @@ void RLMap::genlevel_rooms(){
 			int tentx = lx + lil::rand(0, 9);
 			int tenty = ly + lil::rand(0, 9);
 			if (tentx >= mapwidth || tenty >= mapheight)print("ERROR OUT OF BOUNDS");
-			displaychar.at(tentx, tenty) = '+';
-			do_fov_foralight(tentx, tenty, 9, { 255, 255, 128 });
+			//move light to wall
+			int outx, outy;
+			char direction;
+			bool suc;
+			if (displaychar.at(tentx, tenty) == '#'){
+				if (shootrays(tentx, tenty, ' ', outx, outy, direction, true)){
+					displaychar.at(outx, outy) = lil::dirchar[direction];
+					do_fov_foralight(outx, outy, 9, { 255, 255, 128 },direction);
+				}
+				
+			}
+			else {
+				if (shootrays(tentx, tenty, '#', outx, outy, direction)){
+					displaychar.at(outx, outy) = lil::dirchar_rev[direction];
+					do_fov_foralight(outx, outy, 9, { 255, 255, 128 },lil::opdir[direction]);
+				}
+			}
+			
 		}
 	}
 

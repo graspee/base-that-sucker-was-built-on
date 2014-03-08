@@ -26,7 +26,8 @@ using std::array;
 #include <array>
 #include <unordered_map>
 #include <cmath>
-
+using std::pair;
+using std::make_pair;
 #include "SDL.h"
 
 
@@ -296,8 +297,17 @@ int main(int argc, char* args[])
 				case '#':
 					ti = dicosprite.at("wall");
 					break;
-				case '+':
-					ti = dicosprite.at("torch lit");
+				case '>':
+					ti = dicosprite.at("light e");
+					break;
+				case '<':
+					ti = dicosprite.at("light w");
+					break;
+				case 'v':
+					ti = dicosprite.at("light s");
+					break;
+				case '^':
+					ti = dicosprite.at("light n");
 					break;
 				case 'L':
 					ti = dicosprite.at("lava");

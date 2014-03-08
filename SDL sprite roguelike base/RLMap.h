@@ -486,16 +486,34 @@ public:
 	}
 	*/
 	
-	void do_fov_foralight(uint callx, uint cally, uint radius, ColouredLight clr) {
+	void do_fov_foralight(uint callx, uint cally, uint radius, ColouredLight clr,char directional=-1) {
 		FOV_set_this_run.Fill(false);
 		//float perr = (float) ((clr.r / 2) / (float) radius) / 2;
 		//float perg = (float) ((clr.g / 2) / (float) radius) / 2;
 		//float perb = (float) ((clr.b / 2) / (float) radius) / 2;
 
-		auto ff = [this, callx, cally, radius, clr](uint xx, uint yy){
+		auto ff = [this, callx, cally, radius, clr,directional](uint xx, uint yy){
 
-			
+			if (directional == -1)goto lightit;
+			if (callx == xx && cally == yy)goto lightit;
+			switch (directional){
+			case 0://n
+				if (yy >= cally)return;
+				break;
+			case 1://s
+				if (yy <= cally)return;
+				break;
+			case 2://e
+				if (xx <= callx)return;
+				break;
+			case 3://w
+				if (xx >= callx)return;
+				break;
+			}
+		lightit:
 			dolight(callx, cally, xx, yy, radius, clr, staticlight.at(xx, yy));
+		
+
 			//float anothertemp = (radius - Distance_Euclidean(callx, cally, xx, yy));
 			//signed int tempyr = (int) (perr*anothertemp);
 			//signed int tempyg = (int) (perg*anothertemp);
@@ -563,6 +581,7 @@ public:
 	}
 
 		void genlevel_rooms();
+		//bool CheckAllSidesAndPickOne(int x,int y,char seek,int& xout, int&yout);
 		void QuickdumpToConsole(){
 			for (size_t y = 0; y < height; y++)
 				{
@@ -573,6 +592,9 @@ public:
 					std::cout << std::endl;
 				}
 		}
+
+		int shootray(int x,int y,int deltax, int deltay, char seek);
+		bool shootrays(int x, int y, char seek, int& outx, int& outy, char &direction,bool fudge=false);
 
 };
 
