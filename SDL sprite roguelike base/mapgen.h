@@ -381,12 +381,14 @@ void RLMap::genlevel_rooms(){
 				blocks_sight.set(x, y, true);
 			}
 			else {//change this when you have stuff other than wall and floor
-
 				passable.set(x, y, true);
 				blocks_sight.set(x, y, false);
+				emptyspaces.push_back(make_pair(x, y));
 			}
 		}
 	}
+	lil::shuffle(emptyspaces);
+
 
 	//cleanup
 	for (auto p : patches)delete p;
@@ -417,8 +419,21 @@ void RLMap::genlevel_rooms(){
 			
 		}
 	}
+	
+	//place player
+	pair<int, int> p = lil::onefromthetop(emptyspaces);
+	playerx = p.first, playery = p.second;
 
+	//make some mobs
+	for (int f = 0; f < 20; f++){
+		//we don't want array 2d
+		p = lil::onefromthetop(emptyspaces);
+		mob_instance* m=new mob_instance(0, p.first, p.second);
+		moblist.push_back(m);
+		mobgrid.at(p.first, p.second) = moblist.back();
+		//TODO distance from player check
 
+	}
 	//floodtest it
 	//bool itpassed = this->displaychar.floodtest(' ', 1);
 	//std::cout << (itpassed ? "pass " : "fail ") << std::endl;

@@ -49,13 +49,18 @@ int fprintf(FILE * stream, const char * format, ...){ return 0; }
 #define MAX(a,b) ( (a>b)?a:b )
 #define MIN(a,b) ( (a<b)?a:b )
 
+
+SDL_Window *window;
+SDL_Renderer *renderer;
+
+#include "sprites.h"
+#include "mobs.h"
 #include "RLMap.h"
 
 
 
 void loadsprites(void);
-SDL_Window *window;
-SDL_Renderer *renderer;
+
 
 //"options"
 //these are the defaults
@@ -80,7 +85,7 @@ const string button_names [] = { "WAIT", "NORTH", "NORTH-EAST", "EAST", "SOUTH-E
 "SOUTH", "SOUTH-WEST", "WEST", "NORTH-WEST", "LANTERN" };
 
 #include "sound.h"
-#include "sprites.h"
+
 #include "mapgen.h"
 
 #include "titlepage.h"
@@ -131,6 +136,7 @@ void comeup(){
 	if (OPTION_fullscreen)SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
 	soundinit();
 	spriteinit();
+	setupmobs();
 }
 
 void godown(){
@@ -184,8 +190,6 @@ int main(int argc, char* args[])
 	testmap.genlevel_rooms();
 	testmap.QuickdumpToConsole();
 
-	testmap.playerx = 15;
-	testmap.playery = 11;
 	bool lantern = false;
 
 	SDL_Event myevent;
@@ -324,13 +328,25 @@ int main(int argc, char* args[])
 					lir = testmap.staticlight.at(x, y).r + testmap.dynamiclight.at(x, y).r;
 					lig = testmap.staticlight.at(x, y).g + testmap.dynamiclight.at(x, y).g;
 					lib = testmap.staticlight.at(x, y).b + testmap.dynamiclight.at(x, y).b;
-					
+
 					lir = clamp(lir, 25, 255);
 					lig = clamp(lig, 25, 255);
 					lib = clamp(lib, 25, 255);
 					SDL_SetTextureColorMod(ti, lir, lig, lib);
-					
+
 					SDL_RenderCopy(renderer, ti, NULL, &rect);
+
+
+					//render mob on square if there is one
+					//rect.x = (testmap.playerx - originx) * 16;
+					//rect.y = (testmap.playery - originy) * 16;
+					mob_instance*m = testmap.mobgrid.at(x, y);
+					if (m != nullptr){//do we have to set blendmode each time we draw it?!
+						SDL_SetTextureBlendMode(m->type->sprite, SDL_BLENDMODE_BLEND);
+						SDL_RenderCopy(renderer, m->type->sprite, NULL, &rect);
+					}
+					//end render mob
+
 
 					//minimap
 					//if (testmap.displaychar.at(x, y) !=' '){

@@ -2,6 +2,8 @@
 
 #include <functional>
 
+
+
 struct ColouredLight {
 	signed int r, g, b;
 };
@@ -38,6 +40,13 @@ public:
 	Array2D<int> distance;						//this is used by the pathfinding routines
 	std::list<todoitem> lastpath;				//this is filled by the pathfinding routines
 
+	vector<pair<int, int>> emptyspaces;			//free squares
+
+	//we don't want array2d mobgrid because that makes a mob for
+	//each square. we want an array2d of mob*
+	Array2D<mob_instance*> mobgrid;
+	vector<mob_instance*> moblist;
+
 	inline static int Distance_Chebyshev(int x, int y, int x2, int y2) {
 		int dx = abs(x - x2);
 		int dy = abs(y - y2);
@@ -64,7 +73,8 @@ public:
 	//CREATE A RL MAP
 	RLMap(int _w, int _h) :
 		width(_w), height(_h) {
-
+		
+		mobgrid.Init(nullptr, width, height);
 		displaychar.Init(0, width, height);
 		passable.Init(true, width, height);
 		blocks_sight.Init(false, width, height);

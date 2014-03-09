@@ -21,13 +21,18 @@ namespace lil {
 	static const char dirchar[4] =		{ '^', 'v', '>', '<' };
 	static const char dirchar_rev[4] =	{ 'v', '^', '<', '>' };
 
+	std::default_random_engine e;
+
 	inline void randseed(void){
-		std::srand(time(0));
+		//static std::default_random_engine e;
+		e.seed(time(0));
+		//std::srand(time(0));
 	}
 
 	template <typename T>
 	inline T& randmember(std::vector<T>& v){
-		return v [std::rand()%v.size()];
+		//return v [std::rand()%v.size()];
+		return v [e()%v.size()];
 	}
 
 
@@ -36,7 +41,8 @@ namespace lil {
 		// int i= (std::rand()%((high-low)+1))+low;
 		//std::cout << i << std::endl;
 		//return i;
-		return (std::rand() % ((high - low) + 1)) + low;
+		//return (std::rand() % ((high - low) + 1)) + low;
+		return (e() % ((high - low) + 1)) + low;
 	}
 
 	inline int percentof(int self, int x){
@@ -45,23 +51,30 @@ namespace lil {
 
 	}
 
-	inline void shuffle(std::vector<std::pair<int, int>> &v){
-		static std::default_random_engine e;
-		e.seed(time(0));
+	template <typename T>
+	inline void shuffle(std::vector<T> &v){
+		//static std::default_random_engine e;
+		//e.seed(time(0));
 		std::shuffle(v.begin(), v.end(), e);
 	}
-
-	inline std::pair<int, int> onefromthetop(std::vector<std::pair<int, int>> &v){
+	//need another way to signal error
+	template <typename T>
+	inline T onefromthetop(std::vector<T> &v){
 		if (v.empty()){
-			return std::make_pair(-1, -1);
+			std::cout << "fatal error: attempt to onefromthetop empty vector";
 		}
 		else {
-			std::pair<int, int> r = v.front();
+			T r = v.front();
 			v.erase(v.begin());
 			return r;
 		}
 	}
-	//need a return to the bottom fn
+	
+	//or just use pushback...
+	template <typename T>
+	inline void stickonthebottom(std::vector<T> &v, T& data){
+		v.push_back(data);
+	}
 
 	inline std::string numformat(int n, int numplaces){
 		std::string s = std::to_string(n);
