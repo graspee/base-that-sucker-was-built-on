@@ -166,7 +166,10 @@ bool dotitlepage(){
 	labelmain:
 	int choice=displaymainmenu(mainmenu,true);
 	switch (choice){
-		case 1:return true; break;//play
+		case 1://play
+			SDL_RenderCopy(renderer, titlepage, NULL, NULL);
+			SDL_RenderPresent(renderer);
+			return true; break;
 		case 2:break;//instructions
 		case 3:goto labeloptions;break;//options
 		case 4:return false; break;//exit

@@ -83,7 +83,7 @@
     </Image>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\media\kobbies.psf">
+    <None Include="..\media\sprites.psf">
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>

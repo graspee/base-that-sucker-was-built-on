@@ -1,9 +1,10 @@
 #pragma once
 
-#define ASSET(x) "c:\\users\\graspee\\devel\\"##x
+#define ASSET(x) "C:\\Users\\graspee\\git\\Sucker\\media\\"##x
 
 //global vars for sprites
-std::array<SDL_Texture*, 40> sprites_bg;
+std::array<SDL_Texture*, 40> sprites;
+std::array<SDL_Texture*, 40> bank2;
 std::unordered_map <std::string, SDL_Texture*> dicosprite;
 
 SDL_Texture* hobbitfont, *titlepage;
@@ -14,17 +15,14 @@ SDL_Texture* SpriteLoad(const char* name){
 	SDL_FreeSurface(h);
 	return tex;
 }
-
-void spriteinit(void){
-
+void myspriteload(string filename, array<SDL_Texture*,40>& arr){
 	//load my sprites from pango sprite editor
-
-	std::ifstream ifile;//srsnaobg.psf
-	ifile.open(ASSET("kobbies.psf"), std::ios::in | std::ios::binary);
+	std::ifstream ifile;
+	ifile.open(filename, std::ios::in | std::ios::binary);
 	char bigbuffer[4 * 16 * 16];
 	char buffer[4];
 	for (int s = 0; s < 40; s++){
-		if (sprites_bg[s] == nullptr)sprites_bg[s] = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STATIC, 16, 16);
+		if (arr[s] == nullptr)arr[s] = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STATIC, 16, 16);
 		Uint8 r, g, b;
 		char* bufptr = bigbuffer;
 		for (int y = 0; y < 16; y++)
@@ -42,7 +40,7 @@ void spriteinit(void){
 				}
 			}
 		}
-		SDL_UpdateTexture(sprites_bg[s], 0, (void*) bigbuffer, 16 * 4);
+		SDL_UpdateTexture(arr[s], 0, (void*) bigbuffer, 16 * 4);
 	}
 	//load names
 	for (int i = 0; i < 40; i++)
@@ -52,9 +50,14 @@ void spriteinit(void){
 		ifile.read(&c, 1);
 		ifile.read(buffer, c);
 		if (c < 16)buffer[c] = 0;
-		dicosprite.insert({ buffer, sprites_bg[i] });
+		dicosprite.insert({ buffer, arr[i] });
 	}
 	ifile.close();
+}
+void spriteinit(void){
+
+	myspriteload(ASSET("sprites.psf"), sprites);
+	myspriteload(ASSET("bank2.psf"), bank2);
 
 	hobbitfont=SpriteLoad(ASSET("hobbitfont.bmp"));
 	titlepage = SpriteLoad(ASSET("title.bmp"));
@@ -64,8 +67,10 @@ void spriteinit(void){
 
 void spriteexit(void){
 	//Cleanup my sprites
-	for (size_t i = 0; i < 40; i++)
-		SDL_DestroyTexture(sprites_bg[i]);
+	for (size_t i = 0; i < 40; i++){
+		SDL_DestroyTexture(sprites[i]);
+		SDL_DestroyTexture(bank2[i]);
+	}
 	//cleanup font
 	SDL_DestroyTexture(hobbitfont);
 	SDL_DestroyTexture(titlepage);

@@ -415,12 +415,12 @@ int main(int argc, char* args[])
 		rect.x = (testmap.playerx - originx) * 16;
 		rect.y = (testmap.playery - originy) * 16;
 
-		SDL_SetTextureBlendMode(dicosprite.at("player whm"), SDL_BLENDMODE_BLEND);
-		SDL_RenderCopy(renderer, dicosprite.at("player whm"), NULL, &rect);
+		SDL_SetTextureBlendMode(dicosprite.at("player"), SDL_BLENDMODE_BLEND);
+		SDL_RenderCopy(renderer, dicosprite.at("player"), NULL, &rect);
 		SDL_SetRenderDrawColor(renderer, 0, 225, 225, 255);
 		MINIMAP_PIXEL(testmap.playerx, testmap.playery);
 
-		print("work in progress", 0, 340, 225, 225, 225);
+		print("7DRL 2014 DAY ONE", 0, 340, 225, 225, 225);
 		
 		SDL_RenderPresent(renderer);
 	}

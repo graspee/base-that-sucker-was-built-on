@@ -5,7 +5,7 @@
 Mix_Chunk* steps=nullptr; //sound effect
 Mix_Music* music=nullptr; //music
 
-#define ASSET(x) "c:\\users\\graspee\\devel\\"##x
+#define ASSET(x) "C:\\Users\\graspee\\git\\Sucker\\media\\"##x
 //mix_volumemusic 0-128
 void soundinit(void){
 	return;//we don't need sound while we debug this other stuff

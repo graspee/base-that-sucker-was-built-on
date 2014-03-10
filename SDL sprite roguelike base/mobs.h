@@ -40,6 +40,6 @@ struct mob_instance {
 
 
 void setupmobs(){
-	mob_archetype_list.push_back({ "kobold", dicosprite.at("kobby") });
-	mob_archetype_list.push_back({ "kobold archer", dicosprite.at("kobby bow") });
+	mob_archetype_list.push_back({ "skeleteon", dicosprite.at("bat") });
+	mob_archetype_list.push_back({ "vampire bat", dicosprite.at("bat") });
 }
