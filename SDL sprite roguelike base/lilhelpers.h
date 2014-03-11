@@ -16,8 +16,10 @@ typedef unsigned char uint8;
 namespace lil {
 
 	static const char opdir[4] = { 1, 0, 3, 2 };
-	static const char deltax[4] = { 0, 0, 1, -1 };
-	static const char deltay[4] = { -1, 1, 0, 0 };
+	//n s e w, 
+	//nw ne sw se
+	static const char deltax[8] = { 0, 0, 1, -1,    -1,1,-1,1 };
+	static const char deltay[8] = { -1, 1, 0, 0,     -1,-1,1,1 };
 	static const char dirchar[4] =		{ '^', 'v', '>', '<' };
 	static const char dirchar_rev[4] =	{ 'v', '^', '<', '>' };
 

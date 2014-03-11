@@ -5,7 +5,7 @@
 
 
 struct ColouredLight {
-	signed int r, g, b;
+	signed int r, g, b,total;
 };
 
 //RLMAP REPRESENTS ONE RL GAME MAP OR LEVEL
@@ -23,7 +23,7 @@ private:
 
 public:
 
-	int playerx, playery;
+	
 
 	size_t width, height;						//width and height of the map in cells
 	Array2D<unsigned char> displaychar;			//ASCII char for each cell
@@ -85,8 +85,8 @@ public:
 		playermemory.Init(0, width, height);
 		fogofwar.Init(true, width, height);
 		
-		staticlight.Init({ 0, 0, 0 }, width, height);
-		dynamiclight.Init({ 0, 0, 0 },width, height);
+		staticlight.Init({ 0, 0, 0, 0 }, width, height);
+		dynamiclight.Init({ 0, 0, 0, 0 },width, height);
 
 		
 		
@@ -97,14 +97,7 @@ public:
 		displaychar.Fill('^');
 	}
 
-	/*void InitializeLightmap(void){
-		staticlight.Fill(0);
-		displaychar.ForEach([this](size_t x, size_t y, unsigned char D){
-			if (D == '+'){
-				do_fov_foralight(x, y, 9, 255);
-			} 
-		});
-	}*/
+	
 
 	
 	//PUT A RECTANGULAR BLOCK IN MAP
@@ -461,46 +454,10 @@ public:
 	}
 
 
-/*	void do_fov_foralight(uint callx, uint cally, uint radius,ColouredLight clr) {
-		FOV_set_this_run.Fill(false);
-		float perr = (float) ((clr.r / 2) / (float) radius)/2;
-		float perg = (float) ((clr.g / 2) / (float) radius)/2;
-		float perb = (float) ((clr.b / 2) / (float) radius)/2;
-	
-		auto ff = [this, callx, cally, perr,perg,perb, radius](uint xx, uint yy){
-	
-			float anothertemp = (radius - Distance_Euclidean(callx, cally, xx, yy));
-			signed int tempyr = (int) (perr*anothertemp);
-			signed int tempyg = (int) (perg*anothertemp);
-			signed int tempyb = (int) (perb*anothertemp);
-			
-			staticlight.at(xx, yy).r += perr + tempyr;
-			staticlight.at(xx, yy).g += perg + tempyg;
-			staticlight.at(xx, yy).b += perb + tempyb;
 
-		};
-		
-	
-
-		
-		for (uint i = 0; i < 8; i++) {
-			cast_light(callx, cally, radius, 1, 1.0, 0.0, multipliers[0][i],
-				multipliers[1][i], multipliers[2][i], multipliers[3][i],
-				ff
-				//[this,x,y,per,radius](uint xx, uint yy){
-				//	staticlight.at(xx, yy) += (int) (  per*(radius-Distance_Euclidean(x,y,xx,yy))   );
-			//}
-			);
-		}
-		ff(callx, cally);
-	}
-	*/
 	
 	void do_fov_foralight(uint callx, uint cally, uint radius, ColouredLight clr,char directional=-1) {
 		FOV_set_this_run.Fill(false);
-		//float perr = (float) ((clr.r / 2) / (float) radius) / 2;
-		//float perg = (float) ((clr.g / 2) / (float) radius) / 2;
-		//float perb = (float) ((clr.b / 2) / (float) radius) / 2;
 
 		auto ff = [this, callx, cally, radius, clr,directional](uint xx, uint yy){
 
@@ -524,14 +481,6 @@ public:
 			dolight(callx, cally, xx, yy, radius, clr, staticlight.at(xx, yy));
 		
 
-			//float anothertemp = (radius - Distance_Euclidean(callx, cally, xx, yy));
-			//signed int tempyr = (int) (perr*anothertemp);
-			//signed int tempyg = (int) (perg*anothertemp);
-			//signed int tempyb = (int) (perb*anothertemp);
-
-			//staticlight.at(xx, yy).r += perr + tempyr;
-			//staticlight.at(xx, yy).g += perg + tempyg;
-			//staticlight.at(xx, yy).b += perb + tempyb;
 
 		};
 
@@ -542,9 +491,6 @@ public:
 			cast_light(callx, cally, radius, 1, 1.0, 0.0, multipliers[0][i],
 				multipliers[1][i], multipliers[2][i], multipliers[3][i],
 				ff
-				//[this,x,y,per,radius](uint xx, uint yy){
-				//	staticlight.at(xx, yy) += (int) (  per*(radius-Distance_Euclidean(x,y,xx,yy))   );
-				//}
 				);
 		}
 		ff(callx, cally);
@@ -560,6 +506,8 @@ public:
 		store.r += colour.r * c3;
 		store.g += colour.g * c3;
 		store.b += colour.b * c3;
+
+		store.total = store.r + store.g + store.g;
 	
 	}
 
@@ -571,14 +519,7 @@ public:
 		auto ff = [this, callx, cally, radius, clr](uint xx, uint yy){
 
 			dolight(callx, cally, xx, yy, radius, clr, dynamiclight.at(xx, yy));
-			//optomize this
-			//float c1 = 1.0 / (1.0 + Distance_Squared(callx, cally, xx, yy) / 20);
-			//float c2 = c1 - 1.0 / (1.0 + radius*radius);
-			//float c3 = c2 / (1.0 - 1.0 / (1.0 + radius*radius));
-
-			//dynamiclight.at(xx, yy).r += clr.r * c3;
-			//dynamiclight.at(xx, yy).g += clr.g * c3;
-			//dynamiclight.at(xx, yy).b += clr.b * c3;
+			
 		};
 		
 		for (uint i = 0; i < 8; i++) {

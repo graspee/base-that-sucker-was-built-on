@@ -25,6 +25,7 @@ void myspriteload(string filename, array<SDL_Texture*,40>& arr){
 		if (arr[s] == nullptr)arr[s] = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STATIC, 16, 16);
 		Uint8 r, g, b;
 		char* bufptr = bigbuffer;
+		bool alphap = false;
 		for (int y = 0; y < 16; y++)
 		{
 			for (int x = 0; x < 16; x++)
@@ -33,6 +34,7 @@ void myspriteload(string filename, array<SDL_Texture*,40>& arr){
 				if (buffer[3] == 1){
 					*(bufptr++) = 255; *(bufptr++) = 0; *(bufptr++) = 255;
 					*(bufptr++) = 0;
+					alphap = true;
 				}
 				else {
 					*(bufptr++) = buffer[0]; *(bufptr++) = buffer[1]; *(bufptr++) = buffer[2];
@@ -41,6 +43,8 @@ void myspriteload(string filename, array<SDL_Texture*,40>& arr){
 			}
 		}
 		SDL_UpdateTexture(arr[s], 0, (void*) bigbuffer, 16 * 4);
+		//set blendmode of sprites containing transparency 
+		if (alphap)SDL_SetTextureBlendMode(arr[s], SDL_BLENDMODE_BLEND);
 	}
 	//load names
 	for (int i = 0; i < 40; i++)
@@ -93,4 +97,16 @@ void print(const std::string &s, int x, int y, Uint8 r, Uint8 g, Uint8 b){
 		x += 6;
 	}
 
+
+}
+inline void drawsprite(int x, int y, SDL_Texture* t){
+	static SDL_Rect r = { 0, 0, 16, 16 };
+	r.x = x, r.y = y;
+	SDL_RenderCopy(renderer, t, NULL, &r);
+
+}
+inline void drawsprite(int x, int y, string name){
+	static SDL_Rect r = { 0, 0, 16, 16 };
+	r.x = x, r.y = y;
+	SDL_RenderCopy(renderer, dicosprite.at(name), NULL, &r);
 }

@@ -66,29 +66,50 @@ void loadsprites(void);
 //these are the defaults
 bool OPTION_fullscreen = false;
 char OPTION_res = 1;//0 1 2//myevent.key.keysym.scancode
-vector<int> OPTION_buttons = {	SDL_SCANCODE_KP_5,//WAIT
-							SDL_SCANCODE_KP_8,//N
-							SDL_SCANCODE_KP_9,//NE
-							SDL_SCANCODE_KP_6,//E
-							SDL_SCANCODE_KP_3,//SE
-							SDL_SCANCODE_KP_2,//S
-							SDL_SCANCODE_KP_1,//SW
-							SDL_SCANCODE_KP_4,//W
-							SDL_SCANCODE_KP_7,//NW
-							SDL_SCANCODE_T }; //LANTERN
+enum class commands {N,S,E,W,NW,NE,SW,SE,WAIT,LANTERN,ESCAPE,SUCKBLOW};
+vector<int> OPTION_buttons = {
+	SDL_SCANCODE_KP_8,//N
+	SDL_SCANCODE_KP_2,//S
+	SDL_SCANCODE_KP_6,//E							
+	SDL_SCANCODE_KP_4,//W							
+	SDL_SCANCODE_KP_7,//NW							
+	SDL_SCANCODE_KP_9,//NE							
+	SDL_SCANCODE_KP_1,//SW							
+	SDL_SCANCODE_KP_3,//SE							
+	SDL_SCANCODE_KP_5,//WAIT						
+	SDL_SCANCODE_T, //LANTERN	
+	SDL_SCANCODE_ESCAPE, //ESCAPE
+	SDL_SCANCODE_Z };//SUCKBLOW TOGGLE
+							
+							
 bool options_dirty = false; //if set to true in titlepage we need to write options on getting back
 
 
 unsigned char Scancode_to_command[512];
 
 const string button_names [] = { "WAIT", "NORTH", "NORTH-EAST", "EAST", "SOUTH-EAST",
-"SOUTH", "SOUTH-WEST", "WEST", "NORTH-WEST", "LANTERN" };
+"SOUTH", "SOUTH-WEST", "WEST", "NORTH-WEST", "LANTERN", "TOGGLE SUCK/BLOW" };
+#include "player.h"
+Player player;
+RLMap* map;
+
+inline void  MINIMAP_PIXEL(int THISX, int  THISY) {
+	SDL_RenderDrawPoint(renderer, 640 - map->width * 2 + THISX * 2, THISY * 2);
+	SDL_RenderDrawPoint(renderer, 1 + 640 - map->width * 2 + THISX * 2, THISY * 2);
+	SDL_RenderDrawPoint(renderer, 640 - map->width * 2 + THISX * 2, 1 + THISY * 2);
+	SDL_RenderDrawPoint(renderer, 1 + 640 - map->width * 2 + THISX * 2, 1 + THISY * 2);
+}
 
 #include "sound.h"
 
 #include "mapgen.h"
 
 #include "titlepage.h"
+
+
+
+
+
 
 void loadopts(){
 	char buffer[128];
@@ -145,6 +166,259 @@ void godown(){
 	soundexit();
 	spriteexit();
 	SDL_Quit();
+
+}
+
+void setupscanners(){
+	for (auto f = 0; f < 512; f++)Scancode_to_command[f] = 255;
+	char b = 0;
+	for (auto f : OPTION_buttons)Scancode_to_command[f] = b++;
+	Scancode_to_command[41] = (int)commands::ESCAPE;
+}
+void moveplayer(){
+	map->do_fov_rec_shadowcast(player.posx, player.posy, 11);
+	map->dynamiclight.Fill({ 0, 0, 0, 0 });
+	if (player.lantern)
+		map->do_fov_foradynamiclight(player.posx, player.posy, 9, { 255, 255, 255 });
+}
+bool trytomove(int deltax, int deltay){
+	int tentx = player.posx + deltax;
+	int tenty = player.posy + deltay;
+	if (tentx < 0 || tentx >= map->width || tenty < 0 || tenty >= map->height)
+		return false;
+	if (!map->passable.get(tentx, tenty))
+		return false;
+	player.posx = tentx, player.posy = tenty;
+	
+	moveplayer();
+	
+	return true;
+}
+
+
+void waitonplayer(){
+	static SDL_Event myevent;
+
+	while (1){
+		
+		bool playermoved = false;
+
+		int a = SDL_WaitEvent(&myevent);
+
+		if (myevent.type == SDL_KEYDOWN){
+			commands command = (commands)Scancode_to_command[myevent.key.keysym.scancode];
+
+				if ((int)command < 8)//moobment
+					if (trytomove(lil::deltax[(int)command], lil::deltay[(int)command]))
+					{
+						return;
+					}
+					else { continue; }
+				
+				switch (command){
+				case commands::WAIT:
+					//do nothing at all
+					playsound("downstairs");
+					return;
+				case commands::LANTERN:
+					player.lantern = !player.lantern;
+					if (player.lantern)playsound("lantern");
+					moveplayer();
+					return;
+				case commands::ESCAPE://esc. can't be changed
+					godown();
+					exit(0);
+					break;
+				case commands::SUCKBLOW:
+					player.selectsuck = ! player.selectsuck;
+					playsound(player.selectsuck ? "suck" : "blow");
+					return;
+				}
+			}
+	}
+}
+
+
+
+void timepasses(){
+
+}
+
+void renderscreen(){
+	//render dungeon
+	//std::cout << "r";
+	//ORIG 19 AND 9
+#define XSIZE 21
+#define YSIZE 21
+
+#define XHALF 10
+#define YHALF 10
+
+
+
+
+	int originx = (player.posx < XHALF) ? 0 : player.posx - XHALF;
+	int originy = (player.posy < YHALF) ? 0 : player.posy - YHALF;
+
+	if (player.posx>(map->width - (XHALF + 1)))originx = map->width - XSIZE;
+	if (player.posy>(map->height - (YHALF + 1)))originy = map->height - YSIZE;
+
+	SDL_Rect rect{ 0, 0, 16, 16 };
+
+	for (size_t y = originy; y < originy + YSIZE; y++)
+	{
+		for (size_t x = originx; x < originx + XSIZE; x++)
+		{
+			rect.x = (x - originx) * 16;
+			rect.y = (y - originy) * 16;
+
+			SDL_Texture* ti;
+			int lir = 0, lig = 0, lib = 0;
+
+
+			switch (map->displaychar.at(x, y)){
+			case '.':
+				ti = dicosprite.at("floor");
+				break;
+			case '#':
+				ti = dicosprite.at("wall");
+				break;
+			case '>':
+				ti = dicosprite.at("light e");
+				break;
+			case '<':
+				ti = dicosprite.at("light w");
+				break;
+			case 'v':
+				ti = dicosprite.at("light s");
+				break;
+			case '^':
+				ti = dicosprite.at("light n");
+				break;
+			case 'L':
+				ti = dicosprite.at("lava");
+				break;
+			case '~':
+				ti = dicosprite.at("water");
+				break;
+			default:
+				ti = dicosprite.at("floor");
+				break;
+			}
+
+			if (map->in_FOV.get(x, y)){
+				lir = map->staticlight.at(x, y).r + map->dynamiclight.at(x, y).r;
+				lig = map->staticlight.at(x, y).g + map->dynamiclight.at(x, y).g;
+				lib = map->staticlight.at(x, y).b + map->dynamiclight.at(x, y).b;
+
+				lir = clamp(lir, 25, 255);
+				lig = clamp(lig, 25, 255);
+				lib = clamp(lib, 25, 255);
+				SDL_SetTextureColorMod(ti, lir, lig, lib);
+
+				SDL_RenderCopy(renderer, ti, NULL, &rect);
+
+
+				//render mob on square if there is one
+				//rect.x = (testmap.playerx - originx) * 16;
+				//rect.y = (testmap.playery - originy) * 16;
+				mob_instance*m = map->mobgrid.at(x, y);
+				if (m != nullptr){
+					SDL_RenderCopy(renderer, m->type->sprite, NULL, &rect);
+				}
+				//end render mob
+
+
+				//minimap
+				//if (testmap.displaychar.at(x, y) !=' '){
+				switch (map->displaychar.at(x, y)){
+				case 'L':
+					SDL_SetRenderDrawColor(renderer, 225, 0, 0, 255);
+					break;
+				case '~':
+					SDL_SetRenderDrawColor(renderer, 0, 0, 225, 255);
+					break;
+				case '+':
+					SDL_SetRenderDrawColor(renderer, 225, 225, 0, 255);
+					break;
+				case ' ':
+					SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+					break;
+				default:
+					SDL_SetRenderDrawColor(renderer, 225, 225, 225, 255);
+					break;
+				}
+
+
+
+
+				MINIMAP_PIXEL(x, y);
+
+			}//begin not in fov
+			else {
+				if (!map->fogofwar.get(x, y)){
+					//SDL_SetTextureColorMod(ti, 0, 0, 5);
+					switch (map->playermemory.at(x, y)){
+					case '.':
+						ti = dicosprite.at("floor");
+						break;
+					case '#':
+						ti = dicosprite.at("wall");
+						break;
+					case '+':
+						ti = dicosprite.at("torch lit");
+						break;
+					case 'L':
+						ti = dicosprite.at("lava");
+						break;
+					case '~':
+						ti = dicosprite.at("water");
+						break;
+					default:
+						ti = dicosprite.at("floor");
+						break;
+					}
+
+					SDL_SetTextureColorMod(ti, 0, 0, 75);
+				}
+				else {
+					SDL_SetTextureColorMod(ti, 0, 0, 0);
+				}
+				SDL_RenderCopy(renderer, ti, NULL, &rect);
+			}
+		}
+	}
+
+	rect.x = (player.posx - originx) * 16;
+	rect.y = (player.posy - originy) * 16;
+
+	//SDL_SetTextureBlendMode(dicosprite.at("player"), SDL_BLENDMODE_BLEND);
+	if (map->staticlight.at(player.posx, player.posy).total==0 &&
+		map->dynamiclight.at(player.posx, player.posy).total == 0)
+			SDL_RenderCopy(renderer, dicosprite.at("player stealth"), NULL, &rect);
+		else
+			SDL_RenderCopy(renderer, dicosprite.at("player"), NULL, &rect);
+	SDL_SetRenderDrawColor(renderer, 0, 225, 225, 255);
+	MINIMAP_PIXEL(player.posx, player.posy);
+
+	print("7DRL 2014 DAY TWO", 400, 0, 225, 225, 225);
+
+	//maybe move this to a function. think about does it need to get printed each time
+	const int botline = 360 - 16;
+	drawsprite(0, botline, "player portrait");
+	for (char i = 0; i < player.hp; i++)
+		drawsprite(i * 16 + 16, botline, "heart");
+	drawsprite(16 * 11, botline, "hand");
+	drawsprite(16 * 12, botline, "frame");
+	drawsprite(16 * 13, botline, (player.selectsuck) ? "suck" : "blow");
+	drawsprite(16 * 14, botline, "clockwork box");
+	for (char i = 0; i < 5; i++)
+		drawsprite(16 * (i + 15), botline, (player.mana>i) ? "power full" : "power empty");
+	drawsprite(16 * 20, botline, "power dial");
+
+	//
+
+	SHOW();
 }
 
 #if _DEBUG
@@ -160,269 +434,60 @@ int main(int argc, char* args[])
 
 
 	
-	
-	
+	setupscanners();//need to do this once anyway. we do it again if options changed (even thought it may not have been keys that were changed omgomg)
 
 
 	//this is where we go back to at the end of a game
-	gameloop:
+gameloop:
+	playmusic();
+
 	if (!dotitlepage()){
 		godown();
 		return 0;
 	}
-	
-	if (options_dirty) saveopts();
 
-	for (auto f = 0; f < 512; f++)Scancode_to_command[f] = 255;
-	char b = 0;
-	for (auto f : OPTION_buttons)Scancode_to_command[f] = b++;
-	Scancode_to_command[41] = 200;
+	playmusic(false);
 
+	if (options_dirty){
+		saveopts();
+		setupscanners();
+	}
 
-	
+	//new game begins
 
 	lil::randseed();
 
-	playsound();
+	//setup player
 
+	player.init();
 
-	RLMap testmap(mapwidth, mapheight);
-	testmap.genlevel_rooms();
-	testmap.QuickdumpToConsole();
+	map = new RLMap(mapwidth, mapheight);
+	map->genlevel_rooms();
+	map->QuickdumpToConsole();
 
-	bool lantern = false;
-
-	SDL_Event myevent;
-
-	while (1){
-		
-
-		int a = SDL_WaitEvent(&myevent);
-
-
+	moveplayer();
+	renderscreen();
 	
 
-		if (myevent.type == SDL_KEYDOWN){
-			unsigned char command = Scancode_to_command[myevent.key.keysym.scancode];
-			
-			switch (command){
-			case 9:
-				lantern = !lantern;
-				break;
-			case 5://s
-				if (testmap.playery<testmap.height - 1 &&
-					testmap.passable.get(testmap.playerx, testmap.playery + 1))
-					testmap.playery++; break;
-			case 1://n
-				if (testmap.playery>0 &&
-					testmap.passable.get(testmap.playerx, testmap.playery - 1))
-					testmap.playery--; break;
-			case 3://e
-				if (testmap.playerx<testmap.width - 1 &&
-					testmap.passable.get(testmap.playerx + 1, testmap.playery))
-					testmap.playerx++; break;
-			case 7://w
-				if (testmap.playerx>0 &&
-					testmap.passable.get(testmap.playerx - 1, testmap.playery))
-					testmap.playerx--; break;
-			case 2://ne
-				if (testmap.playery > 0 && testmap.playerx<testmap.width - 1 &&
-					testmap.passable.get(testmap.playerx + 1, testmap.playery - 1))
-				{
-					testmap.playery--; testmap.playerx++;
-				} break;
-			case 8://nw
-				if (testmap.playery>0 && testmap.playerx > 0 &&
-					testmap.passable.get(testmap.playerx - 1, testmap.playery - 1))
-				{
-					testmap.playery--; testmap.playerx--;
-				} break;
-			case 4://se
-				if (testmap.playery < testmap.height - 1 && testmap.playerx < testmap.width - 1 &&
-					testmap.passable.get(testmap.playerx + 1, testmap.playery + 1))
-				{
-					testmap.playery++; testmap.playerx++;
-				}break;
-			case 6://sw
-				if (testmap.playery<testmap.height - 1 && testmap.playerx>0 &&
-					testmap.passable.get(testmap.playerx - 1, testmap.playery + 1))
-				{
-					testmap.playery++; testmap.playerx--;
-				}break;
-			case 200://esc. can't be changed
-				goto CleanupAndExit;
-				break;
+	while (1){
 
 
+		//wait for player to do something
+		waitonplayer();
+
+		//time passes.
+		if (player.mana < 5){
+			playsound("steam");
+			player.mana++;
+			if (player.mana == 5){
+				playsound("ready");
 			}
 		}
-		testmap.do_fov_rec_shadowcast(testmap.playerx, testmap.playery, 11);
-
-		testmap.dynamiclight.Fill({0,0,0});
-		if (lantern)
-			testmap.do_fov_foradynamiclight(testmap.playerx, testmap.playery, 9, { 255, 255, 255 });
-
-
-		//render dungeon
-
-		//ORIG 19 AND 9
-#define XSIZE 21
-#define YSIZE 21
-
-#define XHALF 10
-#define YHALF 10
-
-
-
-
-		int originx = (testmap.playerx < XHALF) ? 0 : testmap.playerx - XHALF;
-		int originy = (testmap.playery < YHALF) ? 0 : testmap.playery - YHALF;
-
-		if (testmap.playerx>(testmap.width - (XHALF + 1)))originx = testmap.width - XSIZE;
-		if (testmap.playery>(testmap.height - (YHALF + 1)))originy = testmap.height - YSIZE;
-
-		SDL_Rect rect{ 0, 0, 16, 16 };
-
-		for (size_t y = originy; y < originy + YSIZE; y++)
-		{
-			for (size_t x = originx; x < originx + XSIZE; x++)
-			{
-				rect.x = (x - originx) * 16;
-				rect.y = (y - originy) * 16;
-
-				SDL_Texture* ti;
-				int lir = 0,lig=0,lib=0;
-
-
-				switch (testmap.displaychar.at(x, y)){
-				case '.':
-					ti = dicosprite.at("floor");
-					break;
-				case '#':
-					ti = dicosprite.at("wall");
-					break;
-				case '>':
-					ti = dicosprite.at("light e");
-					break;
-				case '<':
-					ti = dicosprite.at("light w");
-					break;
-				case 'v':
-					ti = dicosprite.at("light s");
-					break;
-				case '^':
-					ti = dicosprite.at("light n");
-					break;
-				case 'L':
-					ti = dicosprite.at("lava");
-					break;
-				case '~':
-					ti = dicosprite.at("water");
-					break;
-				default:
-					ti = dicosprite.at("floor");
-					break;
-				}
-
-				if (testmap.in_FOV.get(x, y)){
-					lir = testmap.staticlight.at(x, y).r + testmap.dynamiclight.at(x, y).r;
-					lig = testmap.staticlight.at(x, y).g + testmap.dynamiclight.at(x, y).g;
-					lib = testmap.staticlight.at(x, y).b + testmap.dynamiclight.at(x, y).b;
-
-					lir = clamp(lir, 25, 255);
-					lig = clamp(lig, 25, 255);
-					lib = clamp(lib, 25, 255);
-					SDL_SetTextureColorMod(ti, lir, lig, lib);
-
-					SDL_RenderCopy(renderer, ti, NULL, &rect);
-
-
-					//render mob on square if there is one
-					//rect.x = (testmap.playerx - originx) * 16;
-					//rect.y = (testmap.playery - originy) * 16;
-					mob_instance*m = testmap.mobgrid.at(x, y);
-					if (m != nullptr){//do we have to set blendmode each time we draw it?!
-						SDL_SetTextureBlendMode(m->type->sprite, SDL_BLENDMODE_BLEND);
-						SDL_RenderCopy(renderer, m->type->sprite, NULL, &rect);
-					}
-					//end render mob
-
-
-					//minimap
-					//if (testmap.displaychar.at(x, y) !=' '){
-					switch (testmap.displaychar.at(x, y)){
-					case 'L':
-						SDL_SetRenderDrawColor(renderer, 225, 0, 0, 255);
-						break;
-					case '~':
-						SDL_SetRenderDrawColor(renderer, 0, 0, 225, 255);
-						break;
-					case '+':
-						SDL_SetRenderDrawColor(renderer, 225, 225, 0, 255);
-						break;
-					case ' ':
-						SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-						break;
-					default:
-						SDL_SetRenderDrawColor(renderer, 225, 225, 225, 255);
-						break;
-					}
-
-#define MINIMAP_PIXEL(THISX,THISY) \
-	SDL_RenderDrawPoint(renderer, 640 - testmap.width*2 + THISX*2, THISY*2); \
-	SDL_RenderDrawPoint(renderer, 1 + 640 - testmap.width * 2 + THISX * 2, THISY * 2); \
-	SDL_RenderDrawPoint(renderer, 640 - testmap.width * 2 + THISX * 2, 1 + THISY * 2); \
-	SDL_RenderDrawPoint(renderer, 1 + 640 - testmap.width * 2 + THISX * 2, 1 + THISY * 2)
-
-
-					MINIMAP_PIXEL(x, y);
-					
-				}//begin not in fov
-				else {
-					if (!testmap.fogofwar.get(x, y)){
-						//SDL_SetTextureColorMod(ti, 0, 0, 5);
-						switch (testmap.playermemory.at(x, y)){
-						case '.':
-							ti = dicosprite.at("floor");
-							break;
-						case '#':
-							ti = dicosprite.at("wall");
-							break;
-						case '+':
-							ti = dicosprite.at("torch lit");
-							break;
-						case 'L':
-							ti = dicosprite.at("lava");
-							break;
-						case '~':
-							ti = dicosprite.at("water");
-							break;
-						default:
-							ti = dicosprite.at("floor");
-							break;
-						}
-						
-						SDL_SetTextureColorMod(ti, 0, 0, 75);
-					}
-					else {
-						SDL_SetTextureColorMod(ti, 0, 0, 0);
-					}
-					SDL_RenderCopy(renderer, ti, NULL, &rect);
-				}
-			}
-		}
-
-		rect.x = (testmap.playerx - originx) * 16;
-		rect.y = (testmap.playery - originy) * 16;
-
-		SDL_SetTextureBlendMode(dicosprite.at("player"), SDL_BLENDMODE_BLEND);
-		SDL_RenderCopy(renderer, dicosprite.at("player"), NULL, &rect);
-		SDL_SetRenderDrawColor(renderer, 0, 225, 225, 255);
-		MINIMAP_PIXEL(testmap.playerx, testmap.playery);
-
-		print("7DRL 2014 DAY ONE", 0, 340, 225, 225, 225);
 		
-		SDL_RenderPresent(renderer);
+		
+		
+		renderscreen();
+
 	}
 
 CleanupAndExit:

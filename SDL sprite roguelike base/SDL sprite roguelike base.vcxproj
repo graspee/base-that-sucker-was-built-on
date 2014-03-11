@@ -87,6 +87,7 @@
     <ClInclude Include="mapgen.h" />
     <ClInclude Include="mobs.h" />
     <ClInclude Include="notomap.h" />
+    <ClInclude Include="player.h" />
     <ClInclude Include="RLMap.h" />
     <ClInclude Include="sound.h" />
     <ClInclude Include="sprites.h" />

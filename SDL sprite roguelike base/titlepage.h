@@ -1,5 +1,12 @@
 #pragma once
 
+inline void CLS(){
+	SDL_RenderClear(renderer);
+}
+
+inline void SHOW(){
+	SDL_RenderPresent(renderer);
+}
 int GetKey(){
 	static SDL_Event e;
 	while (1){
@@ -19,25 +26,46 @@ inline void drawarrow(char pos, bool draw = true){
 		r.y = 50 + 20 * pos;
 		SDL_RenderFillRect(renderer,&r);
 	}
-	SDL_RenderPresent(renderer);
+	SHOW();
 }
 
 inline void drawblankline(char pos){
 	static SDL_Rect r = { 250, 0, 640 - 251, 8 };
 	r.y = 50 + 20 * pos;
 	SDL_RenderFillRect(renderer, &r);
-	SDL_RenderPresent(renderer);
+	SHOW();
 }
+
+
+
+void spritetest(){
+	CLS();
+
+std::cout << dicosprite.size();
+	int x = 0, y = 0;
+	for (auto &f : dicosprite){
+		
+		drawsprite(x*16+16, y*16+16, f.second);
+		print(f.first, x*16 +16+ 20, y*16+8+16, 225, 225, 45);
+		y++;
+		if (y == 20){ y = 0, x += 10; }
+	}
+	
+
+	SHOW();
+	GetKey();
+}
+
 
 void doredefkeys(){
 	//make temp copy of key bindings
 	vector<int> OPTION_buttons_copy=OPTION_buttons;
 	
-	SDL_RenderClear(renderer);
+	CLS();
 	print("REDEFINE KEYS:", 0, 0, 225, 225, 40);
 	print("<esc> to cancel changes and go back, Enter/Return to accept them and go back.", 0, 16, 225, 225, 40);
 	print("Up and Down arrows to move, space to set key.", 0, 8, 225, 225, 0);
-	SDL_RenderPresent(renderer);
+	SHOW();
 	int howmany = 0;
 	for (auto f : OPTION_buttons_copy){
 		print(button_names[howmany], 150, 50 + 20 * howmany, 40, 225, 225);
@@ -45,11 +73,10 @@ void doredefkeys(){
 		howmany++;
 	}
 	howmany--;
-	SDL_RenderPresent(renderer);
+	SHOW();
 
 	int highlighted = 0;
 	drawarrow(0);
-
 
 
 	while (1){
@@ -73,12 +100,12 @@ void doredefkeys(){
 			{
 				drawblankline(highlighted);
 				print("  ???    Press a key or press <esc> to cancel", 250, 50 + 20 * highlighted, 240, 50, 50);
-				SDL_RenderPresent(renderer);
+				SHOW();
 				int a = GetKey();
 				if (a != SDL_SCANCODE_ESCAPE)OPTION_buttons_copy[highlighted] = a;
 				drawblankline(highlighted);
 				print(SDL_GetKeyName(SDL_GetKeyFromScancode(SDL_Scancode(OPTION_buttons_copy[highlighted]))), 250, 50 + 20 * highlighted, 40, 75, 250);
-				SDL_RenderPresent(renderer);
+				SHOW();
 				break; 
 			}
 			case SDL_SCANCODE_RETURN: case SDL_SCANCODE_RETURN2: case SDL_SCANCODE_KP_ENTER:
@@ -126,7 +153,7 @@ int displaymainmenu(vector<string>& s, bool istop = false){
 		print(to_string(n), 280, 100 + 25 * n, 225, 225, 225);
 		print("Back", 300, 100 + 25 * n, 225, 225, 225);
 	}
-	SDL_RenderPresent(renderer);
+	SHOW();
 
 
 	int chosen = 0;
@@ -168,9 +195,12 @@ bool dotitlepage(){
 	switch (choice){
 		case 1://play
 			SDL_RenderCopy(renderer, titlepage, NULL, NULL);
-			SDL_RenderPresent(renderer);
+			SHOW();
 			return true; break;
-		case 2:break;//instructions
+		case 2://instructions
+			spritetest();
+			goto labelmain;
+			break;
 		case 3:goto labeloptions;break;//options
 		case 4:return false; break;//exit
 	}

@@ -422,7 +422,7 @@ void RLMap::genlevel_rooms(){
 	
 	//place player
 	pair<int, int> p = lil::onefromthetop(emptyspaces);
-	playerx = p.first, playery = p.second;
+	player.posx = p.first, player.posy = p.second;
 
 	//make some mobs
 	for (int f = 0; f < 20; f++){
