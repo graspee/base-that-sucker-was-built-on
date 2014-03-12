@@ -5,6 +5,7 @@
 #include <random>
 #include <algorithm>
 #include <string>
+#include <vector>
 
 #define coldex(x) pe.palette->u32vals[##x]
 #define coldexp(x) pe->palette->u32vals[##x]
@@ -88,10 +89,14 @@ namespace lil {
 		return s;
 	}
 
-	inline std::string RandStrFrom(std::string v[]){
+	inline std::string RandStrFrom(const std::string v[]){
 		return v[lil::rand(0, 4)];
 	}
 
+	template <typename T>
+	inline void removevalue(std::vector<T>& v, T value){
+		v.erase(find(v.begin(), v.end(), value));
+	}
 
 }
 

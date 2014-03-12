@@ -85,7 +85,7 @@
     <ClInclude Include="BitArray.h" />
     <ClInclude Include="lilhelpers.h" />
     <ClInclude Include="mapgen.h" />
-    <ClInclude Include="mobs.h" />
+    <ClInclude Include="items.h" />
     <ClInclude Include="notomap.h" />
     <ClInclude Include="player.h" />
     <ClInclude Include="RLMap.h" />

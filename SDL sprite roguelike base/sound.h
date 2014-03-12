@@ -32,7 +32,11 @@ void soundinit(void){
 }
 
 void playsound(string name){
+	//Mix_Chunk* m = nullptr;
+	//m=dicosound.at(name);
+	//if(m!=nullptr)
 	Mix_PlayChannel(-1, dicosound.at(name), 0);
+	//else std::cout << "error: sound tried to play unknown name";
 }
 
 void playmusic(bool title=true){

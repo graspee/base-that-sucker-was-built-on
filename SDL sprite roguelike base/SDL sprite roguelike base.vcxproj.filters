@@ -51,10 +51,10 @@
     <ClInclude Include="windowsconsolestuff.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="mobs.h">
+    <ClInclude Include="player.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="player.h">
+    <ClInclude Include="items.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

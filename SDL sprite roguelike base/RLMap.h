@@ -32,6 +32,7 @@ public:
 	BitArray in_FOV;							//FOV routines set this to true in each square in FOV
 	BitArray FOV_set_this_run;					//temp array to use in fov routine to avoid processing each in_fov square multiple times
 	BitArray fogofwar;							//is cell covered by fog of war, i.e. not discovered yet? starts off true for every cell
+	BitArray locked;							//is square "locked". can't take item from square, can't use item ON square
 	Array2D<unsigned char> playermemory;		//this is what player last saw on that square (architecture only)			
 	
 	Array2D<ColouredLight> staticlight;			//light amount on cell e.g. torches. can be changed but not often
@@ -42,10 +43,11 @@ public:
 
 	vector<pair<int, int>> emptyspaces;			//free squares
 
-	//we don't want array2d mobgrid because that makes a mob for
+	//we don't want array2d itemgrid because that makes a mob for
 	//each square. we want an array2d of mob*
-	Array2D<mob_instance*> mobgrid;
-	vector<mob_instance*> moblist;
+	Array2D<item_instance*> itemgrid;
+	vector<item_instance*> moblist;
+	vector<item_instance*> itemlist;
 
 	inline static int Distance_Chebyshev(int x, int y, int x2, int y2) {
 		int dx = abs(x - x2);
@@ -73,8 +75,8 @@ public:
 	//CREATE A RL MAP
 	RLMap(int _w, int _h) :
 		width(_w), height(_h) {
-		
-		mobgrid.Init(nullptr, width, height);
+		locked.Init(false, width, height);
+		itemgrid.Init(nullptr, width, height);
 		displaychar.Init(0, width, height);
 		passable.Init(true, width, height);
 		blocks_sight.Init(false, width, height);
@@ -546,6 +548,29 @@ public:
 
 		int shootray(int x,int y,int deltax, int deltay, char seek);
 		bool shootrays(int x, int y, char seek, int& outx, int& outy, char &direction,bool fudge=false);
+
+		inline void freespace(int& a, int& b){
+			pair<int, int> p = lil::onefromthetop(emptyspaces);
+			a = p.first, b = p.second;
+		}
+
+		inline void mapinsert(char c){
+			int x, y;
+			freespace(x, y);
+			displaychar.at(x, y) = c;
+		}
+
+		inline void additem(int howmany, char itemnumber){
+
+			for (int f = 0; f < howmany; f++){
+				int x, y;
+				freespace(x, y);
+				item_instance* m = new item_instance(itemnumber, x, y, 1);
+				itemlist.push_back(m);
+				itemgrid.at(x, y) = itemlist.back();
+			}
+
+		}
 
 };
 

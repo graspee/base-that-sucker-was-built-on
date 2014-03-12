@@ -22,7 +22,8 @@ using std::array;
 #include <conio.h>
 #include <limits>
 
-
+#include <algorithm>
+using std::find;
 #include <array>
 #include <unordered_map>
 #include <cmath>
@@ -53,8 +54,10 @@ int fprintf(FILE * stream, const char * format, ...){ return 0; }
 SDL_Window *window;
 SDL_Renderer *renderer;
 
+int originx, originy;
+
 #include "sprites.h"
-#include "mobs.h"
+#include "items.h"
 #include "RLMap.h"
 
 
@@ -66,7 +69,7 @@ void loadsprites(void);
 //these are the defaults
 bool OPTION_fullscreen = false;
 char OPTION_res = 1;//0 1 2//myevent.key.keysym.scancode
-enum class commands {N,S,E,W,NW,NE,SW,SE,WAIT,LANTERN,ESCAPE,SUCKBLOW};
+enum class commands {N,S,E,W,NW,NE,SW,SE,WAIT,LANTERN,ESCAPE,SUCKBLOW,VAC,SUPERVAC,DROP};
 vector<int> OPTION_buttons = {
 	SDL_SCANCODE_KP_8,//N
 	SDL_SCANCODE_KP_2,//S
@@ -77,9 +80,13 @@ vector<int> OPTION_buttons = {
 	SDL_SCANCODE_KP_1,//SW							
 	SDL_SCANCODE_KP_3,//SE							
 	SDL_SCANCODE_KP_5,//WAIT						
-	SDL_SCANCODE_T, //LANTERN	
+	SDL_SCANCODE_KP_DIVIDE, //LANTERN	
 	SDL_SCANCODE_ESCAPE, //ESCAPE
-	SDL_SCANCODE_Z };//SUCKBLOW TOGGLE
+	SDL_SCANCODE_KP_MINUS,//SUCKBLOW TOGGLE
+	SDL_SCANCODE_KP_0,//VAC
+	SDL_SCANCODE_KP_PLUS,//SUPER VAC
+	SDL_SCANCODE_KP_MULTIPLY };//DROP
+
 							
 							
 bool options_dirty = false; //if set to true in titlepage we need to write options on getting back
@@ -88,7 +95,8 @@ bool options_dirty = false; //if set to true in titlepage we need to write optio
 unsigned char Scancode_to_command[512];
 
 const string button_names [] = { "WAIT", "NORTH", "NORTH-EAST", "EAST", "SOUTH-EAST",
-"SOUTH", "SOUTH-WEST", "WEST", "NORTH-WEST", "LANTERN", "TOGGLE SUCK/BLOW" };
+"SOUTH", "SOUTH-WEST", "WEST", "NORTH-WEST", "LANTERN", "TOGGLE SUCK/BLOW",
+"ACTIVATE VACUUM", "SUPER ACTIVATE VACUUM", "DROP HELD ITEM" };
 #include "player.h"
 Player player;
 RLMap* map;
@@ -157,7 +165,7 @@ void comeup(){
 	if (OPTION_fullscreen)SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
 	soundinit();
 	spriteinit();
-	setupmobs();
+	setupitems();
 }
 
 void godown(){
@@ -182,17 +190,143 @@ void moveplayer(){
 		map->do_fov_foradynamiclight(player.posx, player.posy, 9, { 255, 255, 255 });
 }
 bool trytomove(int deltax, int deltay){
+	
+	
 	int tentx = player.posx + deltax;
 	int tenty = player.posy + deltay;
+	//if proposed move is off the edge of map- denied. no turn consumed
 	if (tentx < 0 || tentx >= map->width || tenty < 0 || tenty >= map->height)
 		return false;
-	if (!map->passable.get(tentx, tenty))
-		return false;
-	player.posx = tentx, player.posy = tenty;
+	//is there an item/monster on the tile?
+	item_instance* i = map->itemgrid.at(tentx, tenty);
+	if (i != nullptr){
+		//if it's an item not a monster
+		if (!i->type->ismob){
+			//ADDSOUND pick up an item
+			//ADDSTATUS you pick up the item
+			//if player not carrying anything
+			if (player.held == nullptr){
+				//pick it up
+				player.held = i;//object -> player hand
+				map->itemgrid.at(tentx, tenty) = nullptr;//take obj off the map
+				//drawsprite(16 * 12, 21 * 16, i->type->sprite);//draw held item in hand frame
+				//map->redrawcell(tentx, tenty);//redraw the map cell
+				return true;
+			}
+			else {//player carrying something
+				//swap with current
+				item_instance* temp = player.held;//put player's obj in temp store
+				player.held = i;//object -> player hand
+				map->itemgrid.at(tentx, tenty) = temp;//put player's prev obj on the map
+				//drawsprite(16 * 12, 21 * 16, "frame");//draw the frame of player held
+				//drawsprite(16 * 12, 21 * 16, i->type->sprite);//draw held item in hand frame
+				//map->redrawcell(tentx, tenty);//redraw the map cell
+				return true;
+			}
+		}
+		else {//it's a monster
+			//if you have a sword
+			if (player.held != nullptr && player.held->type->type == Eitemtype::ITEM_SWORD){
+				//ADDSOUND SWOOSH AND HIT
+				//ADDSTATUS You attack the mob
+				i->hp--;
+				if (i->hp == 0){
+					//ADDSOUND mob death 
+					//ADDSTATUS you kill the mob
+					player.score += 50; //SCORE killing a mob- 50 points
+					//TODO procedural blood. not important
+					//map->moblist.erase(find(map->moblist.begin(),map->moblist.end(), 6));// vector of item_instance* //remove mob from moblist so it won't move
+					lil::removevalue(map->moblist, i);
+					delete (i);//free mob memory
+					map->itemgrid.at(tentx, tenty) = nullptr;//take mob off the map
+				}
+				return true;
+			}
+			else {//no sword
+				//ADDSTATUS You have no weapon to attack the mob
+				return false;
+			}
+		}
+	}
+	else {//no item/monster on tile
+		switch (map->displaychar.at(tentx, tenty)){
+		case 'E'://if it's an exit
+			//if it's locked
+			if (map->locked.get(tentx, tenty)){
+				//if player has key
+				if (player.held != nullptr && player.held->type->type == Eitemtype::ITEM_KEY){
+					//ADDSOUND UNLOCK NOISE
+					//ADDSTATUS YOU UNLOCK THE EXIT
+					delete(player.held);//free obj memory
+					player.held = nullptr;//remove key from hand
+					map->locked.set(tentx, tenty, false);//unlock it
+					return true;
+				}
+				else {//not carrying a key
+					//just move onto the exit
+					player.posx = tentx, player.posy = tenty;
+					moveplayer();
+					return true;
+				}
+			}
+			else {//exit is not locked
+				//ADDSOUND LEAVING LEVEL
+					//ADDSTATUS You exit the level
+				std::cout << "you leave the level";//TODO Actually leave level
+					return true;//delete this
+			}
+			break;
+		case 'C'://broom cupboard
+			//if it's locked
+			if (map->locked.get(tentx, tenty)){
+				//if player has key
+				if (player.held != nullptr && player.held->type->type == Eitemtype::ITEM_KEY){
+					//ADDSOUND UNLOCK NOISE
+					//ADDSTATUS YOU UNLOCK THE broom cupboard
+					delete(player.held);//free obj memory
+					player.held = nullptr;//remove key from hand
+					map->locked.set(tentx, tenty, false);//unlock it
+					return true;
+				}
+				else {//not carrying a key
+					//just move onto the broom cupboard
+					player.posx = tentx, player.posy = tenty;
+					moveplayer();
+					return true;
+				}
+			}
+			else {//cupboard  is not locked
+				//ADDSOUND RESCUE BROOM
+				//ADDSTATUS INDEPENDENT ENTITY PRINCESS SPACEALINA BROOM EMERGES!
+				player.score += 100; //SCORE : RESCUE BROOM FROM CUPBOARD 100 POINTS
+				std::cout << "broom emerges";//TODO Actually make broom emerge
+				return true;//delete this
+			}
+			break;
+		case 'L'://lava
+			player.hp -= 2;
+			if (player.hp <= 0){
+				//ADDSOUND PLAYER DEATH
+				//ADDSTATUS YOU DIE
+				std::cout << "game over you die";
+				return true; //delete this
+			}
+			break;
+		case '#'://wall
+			//do nothing no turn consumed
+			//ADD SOUND WALL BUMP?
+			return false;
+			break;
+		case ' ':
+			player.posx = tentx, player.posy = tenty;
+			moveplayer();
+			return true;
+			break;
+		}
+	}
+	//if (!map->passable.get(tentx, tenty))
+		//return false;
 	
-	moveplayer();
-	
-	return true;
 }
 
 
@@ -218,7 +352,6 @@ void waitonplayer(){
 				switch (command){
 				case commands::WAIT:
 					//do nothing at all
-					playsound("downstairs");
 					return;
 				case commands::LANTERN:
 					player.lantern = !player.lantern;
@@ -233,6 +366,18 @@ void waitonplayer(){
 					player.selectsuck = ! player.selectsuck;
 					playsound(player.selectsuck ? "suck" : "blow");
 					return;
+				case commands::VAC:
+					drawsprite((player.posx - originx) * 16, (player.posy - originy) * 16, "target");
+					SHOW();
+					//ADDSTATUS SELECT DIRECTION
+					GetKey();
+					return;
+					break;
+				case commands::SUPERVAC:
+					break;
+				case commands::DROP:
+					break;
+
 				}
 			}
 	}
@@ -257,8 +402,8 @@ void renderscreen(){
 
 
 
-	int originx = (player.posx < XHALF) ? 0 : player.posx - XHALF;
-	int originy = (player.posy < YHALF) ? 0 : player.posy - YHALF;
+	originx = (player.posx < XHALF) ? 0 : player.posx - XHALF;
+	originy = (player.posy < YHALF) ? 0 : player.posy - YHALF;
 
 	if (player.posx>(map->width - (XHALF + 1)))originx = map->width - XSIZE;
 	if (player.posy>(map->height - (YHALF + 1)))originy = map->height - YSIZE;
@@ -298,8 +443,11 @@ void renderscreen(){
 			case 'L':
 				ti = dicosprite.at("lava");
 				break;
-			case '~':
-				ti = dicosprite.at("water");
+			case 'E':
+				ti = dicosprite.at("exit");
+				break;
+			case 'C':
+				ti = dicosprite.at("broom cupboard");
 				break;
 			default:
 				ti = dicosprite.at("floor");
@@ -322,21 +470,28 @@ void renderscreen(){
 				//render mob on square if there is one
 				//rect.x = (testmap.playerx - originx) * 16;
 				//rect.y = (testmap.playery - originy) * 16;
-				mob_instance*m = map->mobgrid.at(x, y);
+				item_instance*m = map->itemgrid.at(x, y);
 				if (m != nullptr){
 					SDL_RenderCopy(renderer, m->type->sprite, NULL, &rect);
 				}
 				//end render mob
 
+				//render locked icon if square is locked
+				if (map->locked.get(x, y)){
+					SDL_Texture* t = dicosprite.at("locked");
+					SDL_SetTextureColorMod(t, lir, lig, lib);
+					SDL_RenderCopy(renderer, t, NULL, &rect);
+				}
+				//
 
 				//minimap
 				//if (testmap.displaychar.at(x, y) !=' '){
 				switch (map->displaychar.at(x, y)){
-				case 'L':
+				case 'E':
 					SDL_SetRenderDrawColor(renderer, 225, 0, 0, 255);
 					break;
-				case '~':
-					SDL_SetRenderDrawColor(renderer, 0, 0, 225, 255);
+				case 'C':
+					SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
 					break;
 				case '+':
 					SDL_SetRenderDrawColor(renderer, 225, 225, 0, 255);
@@ -392,30 +547,44 @@ void renderscreen(){
 	rect.x = (player.posx - originx) * 16;
 	rect.y = (player.posy - originy) * 16;
 
-	//SDL_SetTextureBlendMode(dicosprite.at("player"), SDL_BLENDMODE_BLEND);
-	if (map->staticlight.at(player.posx, player.posy).total==0 &&
+	//DRAW PLAYER
+	if (map->staticlight.at(player.posx, player.posy).total == 0 &&
 		map->dynamiclight.at(player.posx, player.posy).total == 0)
-			SDL_RenderCopy(renderer, dicosprite.at("player stealth"), NULL, &rect);
-		else
-			SDL_RenderCopy(renderer, dicosprite.at("player"), NULL, &rect);
+		SDL_RenderCopy(renderer, dicosprite.at("player stealth"), NULL, &rect);
+	else
+		SDL_RenderCopy(renderer, dicosprite.at("player"), NULL, &rect);
+	//
+
 	SDL_SetRenderDrawColor(renderer, 0, 225, 225, 255);
 	MINIMAP_PIXEL(player.posx, player.posy);
 
-	print("7DRL 2014 DAY TWO", 400, 0, 225, 225, 225);
-
+	//USER INTERFACE
 	//maybe move this to a function. think about does it need to get printed each time
-	const int botline = 360 - 16;
+	print("7DRL 2014 DAY THREE", 400, 0, 225, 225, 225);
+	const int botline = 21 * 16;// 360 - 16;
+	const int rightedge = (21 * 16);
+	for (int i = 0; i < 10; i++)
+	{
+		drawsprite(rightedge, i * 16, "vacuum base");
+	}
+	for (int i = 10; i < 20; i++)
+	{
+		drawsprite(rightedge , i * 16, "vacuum cell");
+	}
+	drawsprite(rightedge , 16 * 20, "vacuum end");
+
 	drawsprite(0, botline, "player portrait");
-	for (char i = 0; i < player.hp; i++)
-		drawsprite(i * 16 + 16, botline, "heart");
+	for (char i = 0; i < 10; i++)
+		if (i<player.hp)drawsprite(i * 16 + 16, botline, "heart full");
+		else drawsprite(i * 16 + 16, botline, "heart empty");
 	drawsprite(16 * 11, botline, "hand");
 	drawsprite(16 * 12, botline, "frame");
+	if (player.held != nullptr)drawsprite(16 * 12, 21 * 16, player.held->type->sprite);
 	drawsprite(16 * 13, botline, (player.selectsuck) ? "suck" : "blow");
 	drawsprite(16 * 14, botline, "clockwork box");
 	for (char i = 0; i < 5; i++)
 		drawsprite(16 * (i + 15), botline, (player.mana>i) ? "power full" : "power empty");
 	drawsprite(16 * 20, botline, "power dial");
-
 	//
 
 	SHOW();

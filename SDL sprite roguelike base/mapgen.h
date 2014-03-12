@@ -421,19 +421,43 @@ void RLMap::genlevel_rooms(){
 	}
 	
 	//place player
-	pair<int, int> p = lil::onefromthetop(emptyspaces);
-	player.posx = p.first, player.posy = p.second;
+	freespace(player.posx, player.posy);
+	//place exit
+	int x, y;
+	freespace(x, y);
+	map->displaychar.at(x, y) = 'E';
+	map->locked.set(x, y, true);
+	//place chest containerizing broom
+	freespace(x, y);
+	map->displaychar.at(x, y) = 'C';
+	map->locked.set(x, y, true);
 
-	//make some mobs
+
+	//add 20 mobs
 	for (int f = 0; f < 20; f++){
 		//we don't want array 2d
-		p = lil::onefromthetop(emptyspaces);
-		mob_instance* m=new mob_instance(0, p.first, p.second);
+		int x, y;
+		freespace(x, y);
+		item_instance* m=new item_instance(lil::rand(0,5), x,y,1);
 		moblist.push_back(m);
-		mobgrid.at(p.first, p.second) = moblist.back();
+		itemgrid.at(x,y) = moblist.back();
 		//TODO distance from player check
-
 	}
+
+	//add 20 items
+	//5 gems
+	additem(5, 11);
+	//10 gold
+	additem(10, 12);
+	//2 keys
+	additem(2, 13);
+	//3 random items from batteries/shield/sword/stopwatch/medpack/junk
+	for (size_t i = 0; i < 3; i++)
+	{
+		additem(1, lil::rand(14, 19));
+	}
+
+
 	//floodtest it
 	//bool itpassed = this->displaychar.floodtest(' ', 1);
 	//std::cout << (itpassed ? "pass " : "fail ") << std::endl;

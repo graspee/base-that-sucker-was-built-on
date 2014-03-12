@@ -5,8 +5,10 @@ struct Player {
 	bool lantern;
 	char hp, mana;
 	bool selectsuck = true;
-	//item* held;
-	//int score
+	item_instance* held = nullptr;
+	int score;
+	vector<item_instance*> vacuum_chamber;
+
 
 	Player(){
 		init();
