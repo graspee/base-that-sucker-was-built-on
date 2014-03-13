@@ -99,7 +99,16 @@ public:
 		displaychar.Fill('^');
 	}
 
-	
+	~RLMap(){
+		for (size_t y = 0; y < height; y++)
+		{
+			for (size_t x = 0; x < width; x++)
+			{
+				if (itemgrid.at(x, y) != nullptr)
+					delete itemgrid.at(x, y);
+			}
+		}
+	}
 
 	
 	//PUT A RECTANGULAR BLOCK IN MAP
@@ -560,12 +569,12 @@ public:
 			displaychar.at(x, y) = c;
 		}
 
-		inline void additem(int howmany, char itemnumber){
+		inline void additem(int howmany, Eitemtype it){
 
 			for (int f = 0; f < howmany; f++){
 				int x, y;
 				freespace(x, y);
-				item_instance* m = new item_instance(itemnumber, x, y, 1);
+				item_instance* m = new item_instance(it, x, y);
 				itemlist.push_back(m);
 				itemgrid.at(x, y) = itemlist.back();
 			}

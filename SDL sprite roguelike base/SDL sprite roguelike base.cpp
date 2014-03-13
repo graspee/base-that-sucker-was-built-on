@@ -17,6 +17,7 @@ using std::to_string;
 using std::array;
 #include <list>
 #include <map>
+
 #include <cmath>
 #include <chrono>
 #include <conio.h>
@@ -26,12 +27,20 @@ using std::array;
 using std::find;
 #include <array>
 #include <unordered_map>
+using std::unordered_map;
 #include <cmath>
 using std::pair;
 using std::make_pair;
 #include "SDL.h"
 
+void pangodelay(unsigned int ms){
+	unsigned int cur_t = SDL_GetTicks();
+	while (SDL_GetTicks() < cur_t + ms){
+		SDL_Delay(10);
+	}
+}
 
+void renderscreen(); //forward declaration
 
 typedef unsigned int uint;
 
@@ -100,6 +109,24 @@ const string button_names [] = { "WAIT", "NORTH", "NORTH-EAST", "EAST", "SOUTH-E
 #include "player.h"
 Player player;
 RLMap* map;
+
+void killamob(item_instance* i,int x,int y){
+	//ADDSOUND mob death 
+	//ADDSTATUS you kill the mob
+	player.score += 50; //SCORE killing a mob- 50 points
+	//TODO procedural blood. not important
+	if (i->invacuum){
+		lil::replacevalue(player.vacuum_chamber,i,
+		 new item_instance(i->type->deadoneofthem, x, y));
+	}
+	else {
+		lil::removevalue(map->moblist, i);
+		map->itemgrid.at(x, y) = new item_instance(i->type->deadoneofthem, x, y);
+	}
+
+	
+	delete (i);//free mob memory
+}
 
 inline void  MINIMAP_PIXEL(int THISX, int  THISY) {
 	SDL_RenderDrawPoint(renderer, 640 - map->width * 2 + THISX * 2, THISY * 2);
@@ -189,6 +216,10 @@ void moveplayer(){
 	if (player.lantern)
 		map->do_fov_foradynamiclight(player.posx, player.posy, 9, { 255, 255, 255 });
 }
+
+#include "suck.h"
+#include "blow.h"
+
 bool trytomove(int deltax, int deltay){
 	
 	
@@ -231,14 +262,8 @@ bool trytomove(int deltax, int deltay){
 				//ADDSTATUS You attack the mob
 				i->hp--;
 				if (i->hp == 0){
-					//ADDSOUND mob death 
-					//ADDSTATUS you kill the mob
-					player.score += 50; //SCORE killing a mob- 50 points
-					//TODO procedural blood. not important
-					//map->moblist.erase(find(map->moblist.begin(),map->moblist.end(), 6));// vector of item_instance* //remove mob from moblist so it won't move
-					lil::removevalue(map->moblist, i);
-					delete (i);//free mob memory
-					map->itemgrid.at(tentx, tenty) = nullptr;//take mob off the map
+					killamob(i,tentx,tenty);
+					
 				}
 				return true;
 			}
@@ -329,8 +354,8 @@ bool trytomove(int deltax, int deltay){
 	
 }
 
-
-void waitonplayer(){
+//returns true if you should give mana
+bool waitonplayer(){
 	static SDL_Event myevent;
 
 	while (1){
@@ -345,19 +370,19 @@ void waitonplayer(){
 				if ((int)command < 8)//moobment
 					if (trytomove(lil::deltax[(int)command], lil::deltay[(int)command]))
 					{
-						return;
+						return true;
 					}
 					else { continue; }
 				
 				switch (command){
 				case commands::WAIT:
 					//do nothing at all
-					return;
+					return true;
 				case commands::LANTERN:
 					player.lantern = !player.lantern;
 					if (player.lantern)playsound("lantern");
 					moveplayer();
-					return;
+					return true;
 				case commands::ESCAPE://esc. can't be changed
 					godown();
 					exit(0);
@@ -365,15 +390,43 @@ void waitonplayer(){
 				case commands::SUCKBLOW:
 					player.selectsuck = ! player.selectsuck;
 					playsound(player.selectsuck ? "suck" : "blow");
-					return;
+					return false;
 				case commands::VAC:
-					drawsprite((player.posx - originx) * 16, (player.posy - originy) * 16, "target");
-					SHOW();
-					//ADDSTATUS SELECT DIRECTION
-					GetKey();
-					return;
+					if (player.mana < 1){
+						//ADDSTATUS not enough power for requested operationz
+						//ADDSOUND nothing happening with a machine
+						std::cout << "not enough mana";
+						return true;
+						//hopefully a turn is used and steam is given.
+					}
+					if (player.selectsuck){
+						if(suck(player.posx, player.posy, 1))
+							return false;
+						else continue;
+					}
+					else {
+						//doblow
+						
+					}
+					//return true;
 					break;
 				case commands::SUPERVAC:
+					if (player.mana < 5){
+						//ADDSTATUS not enough power for requested operationz
+						//ADDSOUND nothing happening with a machine
+						std::cout << "not enough mana";
+						return true;
+						//hopefully a turn is used and steam is given.
+					}
+					if (player.selectsuck){
+						if(suck(player.posx, player.posy, 10))
+							return false;
+						else continue;
+					}
+					else {
+						//doblow
+					}
+					//return true;
 					break;
 				case commands::DROP:
 					break;
@@ -560,16 +613,18 @@ void renderscreen(){
 
 	//USER INTERFACE
 	//maybe move this to a function. think about does it need to get printed each time
-	print("7DRL 2014 DAY THREE", 400, 0, 225, 225, 225);
+	print("7DRL 2014 DAY FOUR", 400, 0, 225, 225, 225);
 	const int botline = 21 * 16;// 360 - 16;
 	const int rightedge = (21 * 16);
 	for (int i = 0; i < 10; i++)
 	{
 		drawsprite(rightedge, i * 16, "vacuum base");
 	}
+	int dota = player.vacuum_chamber.size();
 	for (int i = 10; i < 20; i++)
 	{
 		drawsprite(rightedge , i * 16, "vacuum cell");
+		if (dota>i - 10)drawsprite(rightedge, i * 16, player.vacuum_chamber[i - 10]->type->sprite);
 	}
 	drawsprite(rightedge , 16 * 20, "vacuum end");
 
@@ -586,6 +641,8 @@ void renderscreen(){
 		drawsprite(16 * (i + 15), botline, (player.mana>i) ? "power full" : "power empty");
 	drawsprite(16 * 20, botline, "power dial");
 	//
+
+	
 
 	SHOW();
 }
@@ -614,7 +671,9 @@ gameloop:
 		godown();
 		return 0;
 	}
-
+	
+	CLS();
+	
 	playmusic(false);
 
 	if (options_dirty){
@@ -632,7 +691,7 @@ gameloop:
 
 	map = new RLMap(mapwidth, mapheight);
 	map->genlevel_rooms();
-	map->QuickdumpToConsole();
+	//map->QuickdumpToConsole();
 
 	moveplayer();
 	renderscreen();
@@ -642,18 +701,18 @@ gameloop:
 
 
 		//wait for player to do something
-		waitonplayer();
+		if (waitonplayer()){
 
-		//time passes.
-		if (player.mana < 5){
-			playsound("steam");
-			player.mana++;
-			if (player.mana == 5){
-				playsound("ready");
+			//time passes.
+			if (player.mana < 5){
+				playsound("steam");
+				player.mana++;
+				if (player.mana == 5){
+					playsound("ready");
+				}
 			}
+
 		}
-		
-		
 		
 		renderscreen();
 

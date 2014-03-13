@@ -57,6 +57,12 @@
     <ClInclude Include="items.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="suck.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="blow.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">

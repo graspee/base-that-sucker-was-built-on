@@ -15,14 +15,25 @@ typedef unsigned char uint8;
 
 
 namespace lil {
+	
+	inline int opp(int x){
+		switch (x){
+		case 1:return -1; case -1:return 1; default:return 0;
+		}
+	}
 
 	static const char opdir[4] = { 1, 0, 3, 2 };
 	//n s e w, 
 	//nw ne sw se
 	static const char deltax[8] = { 0, 0, 1, -1,    -1,1,-1,1 };
 	static const char deltay[8] = { -1, 1, 0, 0,     -1,-1,1,1 };
+
+
+
 	static const char dirchar[4] =		{ '^', 'v', '>', '<' };
 	static const char dirchar_rev[4] =	{ 'v', '^', '<', '>' };
+
+	static const std::string dirnames[8] = { "north", "south", "east", "west", "nw", "ne", "sw", "se" };
 
 	std::default_random_engine e;
 
@@ -96,6 +107,10 @@ namespace lil {
 	template <typename T>
 	inline void removevalue(std::vector<T>& v, T value){
 		v.erase(find(v.begin(), v.end(), value));
+	}
+	template <typename T>
+	inline void replacevalue(std::vector<T>& v, T value, T newvalue){
+		*find(v.begin(), v.end(), value)=newvalue;
 	}
 
 }

@@ -2,7 +2,7 @@
 
 #include "SDL_mixer.h"
 
-std::unordered_map <std::string, Mix_Chunk*> dicosound;
+unordered_map <std::string, Mix_Chunk*> dicosound;
 
 //Mix_Chunk* steps=nullptr; //sound effect
 Mix_Music* titlemusic=nullptr; //music

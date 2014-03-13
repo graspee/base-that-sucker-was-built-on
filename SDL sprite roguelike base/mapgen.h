@@ -432,13 +432,15 @@ void RLMap::genlevel_rooms(){
 	map->displaychar.at(x, y) = 'C';
 	map->locked.set(x, y, true);
 
+	//cheat add 20 swords
+	additem(20, Eitemtype::ITEM_SWORD);
 
 	//add 20 mobs
 	for (int f = 0; f < 20; f++){
 		//we don't want array 2d
 		int x, y;
 		freespace(x, y);
-		item_instance* m=new item_instance(lil::rand(0,5), x,y,1);
+		item_instance* m=new item_instance((Eitemtype)lil::rand((int)Eitemtype::MOB_SKEL,(int)Eitemtype::MOB_BAT), x,y);
 		moblist.push_back(m);
 		itemgrid.at(x,y) = moblist.back();
 		//TODO distance from player check
@@ -446,15 +448,15 @@ void RLMap::genlevel_rooms(){
 
 	//add 20 items
 	//5 gems
-	additem(5, 11);
+	additem(5, Eitemtype::ITEM_GEM);
 	//10 gold
-	additem(10, 12);
+	additem(10, Eitemtype::ITEM_GOLD);
 	//2 keys
-	additem(2, 13);
+	additem(2, Eitemtype::ITEM_KEY);
 	//3 random items from batteries/shield/sword/stopwatch/medpack/junk
 	for (size_t i = 0; i < 3; i++)
 	{
-		additem(1, lil::rand(14, 19));
+		additem(1, (Eitemtype) lil::rand((int)Eitemtype::ITEM_BATTERY, (int)Eitemtype::ITEM_JUNK));
 	}
 
 
