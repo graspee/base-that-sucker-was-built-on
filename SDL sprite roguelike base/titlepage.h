@@ -1,6 +1,7 @@
 #pragma once
 
 inline void CLS(){
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
 	SDL_RenderClear(renderer);
 }
 

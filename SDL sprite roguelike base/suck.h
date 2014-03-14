@@ -13,49 +13,56 @@
 
 struct suckpath{
 	int destx=-1,desty=-1;
-	int lavax=-1,lavay=-1;// (first lava obj you're sucking will hit)
+	//int lavax=-1,lavay=-1;// (first lava obj you're sucking will hit)
 	int pathlength;
 
 	suckpath(){
-		destx = -1, desty = -1, lavax = -1, lavay = -1, pathlength = 0;
+		destx = -1, desty = -1;
+		//lavax = -1, lavay = -1;
+		pathlength = 0;
 	}
 };
 
 
 
 //return true for a real operation (so you get no mana and it uses a turn)
-bool suck(int operatorx, int operatory, int suckrange){
+bool suck(int operatorx, int operatory, int range){
 
 	char numpathfound=0, lastfound=0;
 
 	suckpath path[8];
 
-	//we check outwards suckrange squares (1 normal, 10 super)
+	//we check outwards range squares (1 normal, 10 super)
 
 	for(char g=0;g<8;g++){
 		int curx = operatorx, cury = operatory;
-		for(char f=0;f<suckrange;f++){
+		for(char f=0;f<range;f++){
 			curx+=lil::deltax[g], cury+=lil::deltay[g];
 			
 			if (curx==0 || cury==0 || curx>=map->width || cury>=map->height){//if off map
 				path[g].destx = -1, path[g].desty = -1;//fail
 				goto DongSlicingMadeEasyByGarthStubbs;
 			}
-			if (!map->passable.get(curx,cury)){  //(map->displaychar.at(curx, cury) == '#'){//if hit a wall or a light...
-				path[g].destx = -1, path[g].desty = -1; //fail
-				goto DongSlicingMadeEasyByGarthStubbs;
-			}
+			
 			if(map->itemgrid.at(curx,cury)!=nullptr){//if the square curx, cury has obj on it
 				path[g].destx=curx, path[g].desty=cury; //success
-		//		std::cout << "hit" << (int) g;
+				//std::cout << "hit" << (int) g;
 				numpathfound++, lastfound=g;
 				path[g].pathlength=f;
 				goto DongSlicingMadeEasyByGarthStubbs;
 			}
-			if(map->displaychar.at(curx,cury)=='L'){//if curx,cury is lava
-				path[g].lavax=curx, path[g].lavay=cury;
+
+			if (!map->passable.get(curx,cury)){  //(map->displaychar.at(curx, cury) == '#'){//if hit a wall or a light...
+				path[g].destx = -1, path[g].desty = -1; //fail
 				goto DongSlicingMadeEasyByGarthStubbs;
 			}
+
+
+
+			//if (map->displaychar.at(curx, cury) == 'L'){//if curx,cury is lava
+			//	path[g].lavax=curx, path[g].lavay=cury;
+			//	goto DongSlicingMadeEasyByGarthStubbs;
+			//}
 		}
 	DongSlicingMadeEasyByGarthStubbs:;
 	}
@@ -78,21 +85,21 @@ bool suck(int operatorx, int operatory, int suckrange){
 		
 		//(player.posx - originx) * 16, (player.posy - originy) * 16
 
-		if (path[0].destx != -1)
+		if (path[0].destx == -1)
 			drawsprite((player.posx - originx) * 16, (player.posy - originy) * 16, "target n");
-		if (path[1].destx != -1)
+		if (path[1].destx == -1)
 			drawsprite((player.posx - originx) * 16, (player.posy - originy) * 16, "target s");
-		if (path[2].destx != -1)
+		if (path[2].destx == -1)
 			drawsprite((player.posx - originx) * 16, (player.posy - originy) * 16, "target e");
-		if (path[3].destx != -1)
+		if (path[3].destx == -1)
 			drawsprite((player.posx - originx) * 16, (player.posy - originy) * 16, "target w");
-		if (path[4].destx != -1) 
+		if (path[4].destx == -1) 
 			drawsprite((player.posx - originx) * 16, (player.posy - originy) * 16, "target nw");
-		if (path[5].destx != -1)
+		if (path[5].destx == -1)
 			drawsprite((player.posx - originx) * 16, (player.posy - originy) * 16, "target ne");
-		if (path[6].destx != -1)
+		if (path[6].destx == -1)
 			drawsprite((player.posx - originx) * 16, (player.posy - originy) * 16, "target sw");
-		if (path[7].destx != -1)
+		if (path[7].destx == -1)
 			drawsprite((player.posx - originx) * 16, (player.posy - originy) * 16, "target se");
 		//ADDSTATUS select direction
 		SHOW();
@@ -117,16 +124,16 @@ bool suck(int operatorx, int operatory, int suckrange){
 
 	item_instance* i = map->itemgrid.at(sx, sy);
 
-		std::cout << "sucking to the " << lil::dirnames[lastfound] << std::endl;
+		//std::cout << "sucking to the " << lil::dirnames[lastfound] << std::endl;
 	
-		std::cout << "item is: " << i->type->name << std::endl;
+		//std::cout << "item is: " << i->type->name << std::endl;
 
-		std::cout << "distance is: " << (int) path[lastfound].pathlength << std::endl;
+		//std::cout << "distance is: " << (int) path[lastfound].pathlength << std::endl;
 
 	//TODO don't let it suck stuff you can't see
 
 	//the terrible cost to suckerizing: steam usage! oh noes mama rabbit, ma steam is going down!
-	if (suckrange == 1)
+	if (range == 1)
 		player.mana -= 1;
 	else
 		player.mana = 0;
@@ -139,7 +146,7 @@ bool suck(int operatorx, int operatory, int suckrange){
 	
 	if (i->type->fitsinvacuum == false && path[lastfound].pathlength == 0){
 		//ADDSTATUS it no fit in the vacuum mister player sir
-		std::cout << "no fit";
+		//std::cout << "no fit";
 		return true;
 	}
 	
@@ -150,15 +157,22 @@ bool suck(int operatorx, int operatory, int suckrange){
 		
 
 		//this is where you need to account for lava in the middle of the path
-		
+		//we removed lava check on path gen so check lava each square
+
 		//int sx = path[lastfound].destx, sy = path[lastfound].desty;
 		for (int f = 0; f < path[lastfound].pathlength;f++){
 			//move it, render screen, wait
 			
-			map->itemgrid.at(sx,sy) = nullptr;
+			
+
+			//map->itemgrid.at(sx,sy) = nullptr;
 			sx -= lil::deltax[lastfound];
 			sy -= lil::deltay[lastfound];
-			map->itemgrid.at(sx, sy) = i;
+			//map->itemgrid.at(sx, sy) = i;
+
+			map->itemmoveto(i, sx, sy);
+			
+
 			renderscreen();
 			pangodelay(50);
 			
@@ -183,8 +197,8 @@ bool suck(int operatorx, int operatory, int suckrange){
 	//ADDSTATUS ITEM ENTERS CHAMBER
 
 	//animate it
-
-	map->itemgrid.at(sx, sy) = nullptr;
+	map->itemremovefrom(i);
+	
 	
 	char dest = player.vacuum_chamber.size() + 9;
 	for (int f = 21; f > dest; f--){
@@ -197,6 +211,7 @@ bool suck(int operatorx, int operatory, int suckrange){
 
 	//add to the chamber
 	player.vacuum_chamber.push_back(i);
+	i->invacuum = true;
 
 
 

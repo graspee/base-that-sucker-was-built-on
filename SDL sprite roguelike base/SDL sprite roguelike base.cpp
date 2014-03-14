@@ -1,6 +1,7 @@
 
-#include "stdafx.h"
 
+#include "stdafx.h"
+bool gameover = false;
 #include "lilhelpers.h"
 
 #include "Array2D.h"
@@ -65,8 +66,12 @@ SDL_Renderer *renderer;
 
 int originx, originy;
 
+
+
 #include "sprites.h"
 #include "items.h"
+#include "player.h"
+Player player;
 #include "RLMap.h"
 
 
@@ -106,27 +111,36 @@ unsigned char Scancode_to_command[512];
 const string button_names [] = { "WAIT", "NORTH", "NORTH-EAST", "EAST", "SOUTH-EAST",
 "SOUTH", "SOUTH-WEST", "WEST", "NORTH-WEST", "LANTERN", "TOGGLE SUCK/BLOW",
 "ACTIVATE VACUUM", "SUPER ACTIVATE VACUUM", "DROP HELD ITEM" };
-#include "player.h"
-Player player;
+
 RLMap* map;
+
+
 
 void killamob(item_instance* i,int x,int y){
 	//ADDSOUND mob death 
 	//ADDSTATUS you kill the mob
 	player.score += 50; //SCORE killing a mob- 50 points
 	//TODO procedural blood. not important
+	lil::removevalue(map->moblist, i);
 	if (i->invacuum){
 		lil::replacevalue(player.vacuum_chamber,i,
 		 new item_instance(i->type->deadoneofthem, x, y));
 	}
 	else {
-		lil::removevalue(map->moblist, i);
-		map->itemgrid.at(x, y) = new item_instance(i->type->deadoneofthem, x, y);
+		item_instance* i2=new item_instance(i->type->deadoneofthem, x, y);
+		map->itemput(i2, x, y);
+		
 	}
 
 	
 	delete (i);//free mob memory
 }
+void damagemob(item_instance* i, int x, int y, int amount){
+	i->hp -= amount;
+	if (i->hp <= 0)
+		killamob(i, x, y);
+}
+
 
 inline void  MINIMAP_PIXEL(int THISX, int  THISY) {
 	SDL_RenderDrawPoint(renderer, 640 - map->width * 2 + THISX * 2, THISY * 2);
@@ -180,7 +194,7 @@ void comeup(){
 	x *= OPTION_res + 1;
 	y *= OPTION_res + 1;
 	SDL_Init(SDL_INIT_EVERYTHING);
-	window = SDL_CreateWindow("genericRL",
+	window = SDL_CreateWindow("Sucker [7DRL 2014] by graspee",
 		SDL_WINDOWPOS_UNDEFINED,
 		SDL_WINDOWPOS_UNDEFINED,
 		x, y,
@@ -215,6 +229,12 @@ void moveplayer(){
 	map->dynamiclight.Fill({ 0, 0, 0, 0 });
 	if (player.lantern)
 		map->do_fov_foradynamiclight(player.posx, player.posy, 9, { 255, 255, 255 });
+
+	if (map->staticlight.at(player.posx, player.posy).total == 0 &&
+		map->dynamiclight.at(player.posx, player.posy).total == 0)
+		player.stealthed = true;
+	else
+		player.stealthed = false;
 }
 
 #include "suck.h"
@@ -239,7 +259,7 @@ bool trytomove(int deltax, int deltay){
 			if (player.held == nullptr){
 				//pick it up
 				player.held = i;//object -> player hand
-				map->itemgrid.at(tentx, tenty) = nullptr;//take obj off the map
+				map->itemremovefrom(i);//take obj off the map
 				//drawsprite(16 * 12, 21 * 16, i->type->sprite);//draw held item in hand frame
 				//map->redrawcell(tentx, tenty);//redraw the map cell
 				return true;
@@ -248,7 +268,7 @@ bool trytomove(int deltax, int deltay){
 				//swap with current
 				item_instance* temp = player.held;//put player's obj in temp store
 				player.held = i;//object -> player hand
-				map->itemgrid.at(tentx, tenty) = temp;//put player's prev obj on the map
+				map->itemput(temp, tentx, tenty);//put player's prev obj on the map
 				//drawsprite(16 * 12, 21 * 16, "frame");//draw the frame of player held
 				//drawsprite(16 * 12, 21 * 16, i->type->sprite);//draw held item in hand frame
 				//map->redrawcell(tentx, tenty);//redraw the map cell
@@ -260,11 +280,7 @@ bool trytomove(int deltax, int deltay){
 			if (player.held != nullptr && player.held->type->type == Eitemtype::ITEM_SWORD){
 				//ADDSOUND SWOOSH AND HIT
 				//ADDSTATUS You attack the mob
-				i->hp--;
-				if (i->hp == 0){
-					killamob(i,tentx,tenty);
-					
-				}
+				damagemob(i, tentx, tenty, 1);
 				return true;
 			}
 			else {//no sword
@@ -296,9 +312,19 @@ bool trytomove(int deltax, int deltay){
 			}
 			else {//exit is not locked
 				//ADDSOUND LEAVING LEVEL
-					//ADDSTATUS You exit the level
-				std::cout << "you leave the level";//TODO Actually leave level
-					return true;//delete this
+				//ADDSTATUS You exit the level
+				//std::cout << "you leave the level";//TODO Actually leave level
+				if (player.level == 10){
+					std::cout << "you win the game";
+					
+				}
+				delete map;
+				map = new RLMap(mapwidth, mapheight);
+				CLS();
+				moveplayer();
+				//renderscreen();
+
+				return true;//delete this
 			}
 			break;
 		case 'C'://broom cupboard
@@ -324,18 +350,21 @@ bool trytomove(int deltax, int deltay){
 				//ADDSOUND RESCUE BROOM
 				//ADDSTATUS INDEPENDENT ENTITY PRINCESS SPACEALINA BROOM EMERGES!
 				player.score += 100; //SCORE : RESCUE BROOM FROM CUPBOARD 100 POINTS
-				std::cout << "broom emerges";//TODO Actually make broom emerge
+				//std::cout << "broom emerges";//TODO Actually make broom emerge
+				
+				
+				map->displaychar.at(tentx, tenty) = ' ';
+				item_instance* broom = new item_instance(Eitemtype::MOB_BROOM, tentx, tenty);
+				broom->behaviour = EBehaviour::BEHAVIOUR_STATIC;
+				map->itemput(broom, tentx, tenty);
+				
+				map->moblist.push_back(broom);
+
 				return true;//delete this
 			}
 			break;
 		case 'L'://lava
-			player.hp -= 2;
-			if (player.hp <= 0){
-				//ADDSOUND PLAYER DEATH
-				//ADDSTATUS YOU DIE
-				std::cout << "game over you die";
-				return true; //delete this
-			}
+			player.damage(2, false, " lava");
 			break;
 		case '#'://wall
 			//do nothing no turn consumed
@@ -405,7 +434,9 @@ bool waitonplayer(){
 						else continue;
 					}
 					else {
-						//doblow
+						if (blow(player.posx, player.posy, 1))
+							return false;
+						else continue;
 						
 					}
 					//return true;
@@ -424,7 +455,9 @@ bool waitonplayer(){
 						else continue;
 					}
 					else {
-						//doblow
+						if (blow(player.posx, player.posy, 10))
+							return false;
+						else continue;
 					}
 					//return true;
 					break;
@@ -439,7 +472,19 @@ bool waitonplayer(){
 
 
 void timepasses(){
-
+	//time passes.
+	if (player.mana < 5){
+		playsound("steam");
+		player.mana++;
+		if (player.mana == 5){
+			playsound("ready");
+		}
+	}
+	for (auto f : map->moblist){
+		if (!f->invacuum){
+			map->item_getsaturn(f);
+		}
+	}
 }
 
 void renderscreen(){
@@ -526,6 +571,9 @@ void renderscreen(){
 				item_instance*m = map->itemgrid.at(x, y);
 				if (m != nullptr){
 					SDL_RenderCopy(renderer, m->type->sprite, NULL, &rect);
+					if (m->noticedplayer)
+						SDL_RenderCopy(renderer,dicosprite.at("noticed"), NULL, &rect);
+
 				}
 				//end render mob
 
@@ -601,8 +649,9 @@ void renderscreen(){
 	rect.y = (player.posy - originy) * 16;
 
 	//DRAW PLAYER
-	if (map->staticlight.at(player.posx, player.posy).total == 0 &&
-		map->dynamiclight.at(player.posx, player.posy).total == 0)
+	//if (map->staticlight.at(player.posx, player.posy).total == 0 &&
+	//	map->dynamiclight.at(player.posx, player.posy).total == 0)
+	if (player.stealthed)
 		SDL_RenderCopy(renderer, dicosprite.at("player stealth"), NULL, &rect);
 	else
 		SDL_RenderCopy(renderer, dicosprite.at("player"), NULL, &rect);
@@ -613,7 +662,8 @@ void renderscreen(){
 
 	//USER INTERFACE
 	//maybe move this to a function. think about does it need to get printed each time
-	print("7DRL 2014 DAY FOUR", 400, 0, 225, 225, 225);
+	print("LEBEL: " + lil::numformat(player.level, 2) + " SKOER: " + lil::numformat(player.score, 6) , 0, 352, 0, 225, 225);
+	print("7DRL 2014 DAY FIVE", 400, 0, 225, 225, 225);
 	const int botline = 21 * 16;// 360 - 16;
 	const int rightedge = (21 * 16);
 	for (int i = 0; i < 10; i++)
@@ -690,7 +740,7 @@ gameloop:
 	player.init();
 
 	map = new RLMap(mapwidth, mapheight);
-	map->genlevel_rooms();
+	//map->genlevel_rooms();
 	//map->QuickdumpToConsole();
 
 	moveplayer();
@@ -703,14 +753,9 @@ gameloop:
 		//wait for player to do something
 		if (waitonplayer()){
 
-			//time passes.
-			if (player.mana < 5){
-				playsound("steam");
-				player.mana++;
-				if (player.mana == 5){
-					playsound("ready");
-				}
-			}
+
+			timepasses();
+			
 
 		}
 		

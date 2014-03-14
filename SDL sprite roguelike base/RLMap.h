@@ -47,7 +47,128 @@ public:
 	//each square. we want an array2d of mob*
 	Array2D<item_instance*> itemgrid;
 	vector<item_instance*> moblist;
-	vector<item_instance*> itemlist;
+	//vector<item_instance*> itemlist;
+
+	inline void itemremovefrom(item_instance* i){
+		itemgrid.at(i->posx, i->posy) = nullptr;
+		passable.set(i->posx, i->posy, true);
+		i->posx = -1, i->posy = -1;
+	}
+
+
+	//puts this item (that wasn't on the map, onto the map)
+	inline void itemput(item_instance* i,int x, int y){
+		i->posx = x, i->posy = y;
+		itemgrid.at(x, y) = i;
+		passable.set(x, y, false);
+		return;
+	}
+	//moves an item on the map from its current location to a new one
+	inline void itemmoveto(item_instance* i,int x, int y){
+		itemremovefrom(i);
+		itemput(i,x, y);
+	}
+
+	char getrandomblanksurround(item_instance* i){
+		vector<int> v;
+		for (char f = 0; f < 8; f++)
+		{
+			int tentx = i->posx + lil::deltax[f];
+			int tenty = i->posy + lil::deltay[f];
+
+			if ( (tentx>0 && tenty>0 && tentx<width && tenty<height) &&
+				(itemgrid.at(tentx, tenty) == nullptr)) {
+				v.push_back(f);
+			}
+		}
+
+		if (v.size() == 0)return 0;
+		else return lil::randmember(v);
+
+	}
+
+	void item_getsaturn(item_instance* i){
+		if (in_FOV.get(i->posx, i->posy)							//if this item is in your field of view
+			&& i->type->ismob										//and it's a mob
+			&& i->type->aggressive									//and that mob is of an aggressive type
+			//&& i->behaviour != EBehaviour::BEHAVIOUR_CHASING		//and it's not already chasing you
+			&& ! i->noticedplayer									//and it hasn't noticed player	
+			&& !player.stealthed){									//and player is not stealthed
+			i->noticedplayer = true;
+			i->behaviour = EBehaviour::BEHAVIOUR_CHASING;
+			//ADDSOUND METAL GEAR SOLID STYLE NOTICED YOU NOISE
+			//ADDSTATUS THE MOB HAS SEEN YOU
+		}
+
+		                    
+		//check all directions from mob. if there's something the mob wants then 
+		//it gets it
+		//broom - treasure and sword, battle broom - mob
+		//esr - batteries, cueb - anything
+		//mob in attack mode- you or broom
+
+		if (i->noticedplayer){
+			if (abs(i->posx - player.posx) <= 1 && abs(i->posy - player.posy) <= 1){
+				//ADDSOUND MOB ATTACKS YOU
+				//STATUS MOB ATTACKS YOU
+				player.damage(i->type->damagetheydeal, true,i->type->name);
+				return;
+			}
+		}
+
+
+
+		//stop mobs moving onto your square. even if mobs would attack you instead broom will move
+		//on top of you
+
+		//if stationary- 1 in 5 chance of starting to move
+		if (i->behaviour == EBehaviour::BEHAVIOUR_STATIC && lil::rand(1, 100) <= 20){
+			i->behaviour == EBehaviour::BEHAVIOUR_WANDERING;
+			//when you start to move- pick a direction that isn't blocked
+			i->movdircurrent = getrandomblanksurround(i);
+			//i->movdircurrent = lil::rand(0, 7);
+			return;
+		}
+		//if moving - 1 in 10 chance of it stopping or changing direction
+		if (i->behaviour == EBehaviour::BEHAVIOUR_WANDERING && lil::rand(1, 100) <= 10){
+			if (lil::rand(1, 100) <= 25){
+				i->behaviour = EBehaviour::BEHAVIOUR_STATIC;
+			}
+			else {
+				i->movdircurrent = lil::rand(0, 7);
+			}
+			return;
+		}
+		//at this point it may or may not have "noticed" the player this turn
+		//its behaviour could be any type, but it has passed up an opportunity
+		//to change dir or stop if not chasing player
+
+		if (i->behaviour == EBehaviour::BEHAVIOUR_CHASING){
+			//kludge- map cell containing mob or item is normally marked as unpassable
+			//here we temporarily set it to passable for astar to work then set it back after
+			passable.set(i->posx, i->posy, true);
+			bool astar = PathfindAStar(i->posx, i->posy, player.posx, player.posy);
+			passable.set(i->posx, i->posy, false);
+			if (astar){
+				itemmoveto(i, lastpath.back().x, lastpath.back().y);
+				std::cout << i->type->name << " moved to " << (int)i->posx << " " << (int) i->posy << std::endl;
+				return;
+			}
+		}
+		else {
+			int tentx = i->posx + lil::deltax[i->movdircurrent];
+			int tenty = i->posy + lil::deltay[i->movdircurrent];
+
+			if ((tentx < 0 || tenty < 0 || tentx >= width || tenty >= height)//off map
+				|| (!passable.get(tentx, tenty))){ //wall, light or object 
+				i->behaviour = EBehaviour::BEHAVIOUR_STATIC;
+				return;
+			}
+
+			this->itemmoveto(i, tentx, tenty);
+			return;
+		}
+	}
 
 	inline static int Distance_Chebyshev(int x, int y, int x2, int y2) {
 		int dx = abs(x - x2);
@@ -90,7 +211,7 @@ public:
 		staticlight.Init({ 0, 0, 0, 0 }, width, height);
 		dynamiclight.Init({ 0, 0, 0, 0 },width, height);
 
-		
+		genlevel_rooms();
 		
 	}
 
@@ -100,6 +221,7 @@ public:
 	}
 
 	~RLMap(){
+		std::cout << "~map going down";
 		for (size_t y = 0; y < height; y++)
 		{
 			for (size_t x = 0; x < width; x++)
@@ -132,13 +254,12 @@ public:
 	bool PathfindDijkstra(int startx, int starty, int goalx, int goaly){
 		std::chrono::high_resolution_clock::time_point timestart = std::chrono::high_resolution_clock::now();
 
-#ifdef DIJKSTRA_DIRECTIONS_CARDINAL_ONLY
-		static const int dircount = 8;
-		static const int dxdy[dircount] = { 0, -1, 1, 0, 0, 1, -1, 0 };
-#else	
+
+		//static const int dircount = 8;
+		//static const int dxdy[dircount] = { 0, -1, 1, 0, 0, 1, -1, 0 };
 		static const int dircount = 16;
 		static const int dxdy[dircount] = { 0, -1, 1, 0, 0, 1, -1, 0, 1, -1, 1, 1, -1, 1, -1, -1 };
-#endif
+
 
 		BitArray visited(false, width, height);
 
@@ -245,33 +366,28 @@ public:
 
 	}
 
-#undef ASTAR_DIRECTIONS_CARDINAL_ONLY
 
 
 	bool PathfindAStar(int startx, int starty, int goalx, int goaly){
-		std::chrono::high_resolution_clock::time_point timestart = std::chrono::high_resolution_clock::now();
+		//std::chrono::high_resolution_clock::time_point timestart = std::chrono::high_resolution_clock::now();
 
-#ifdef ASTAR_DIRECTIONS_CARDINAL_ONLY
-		static const int dircount = 8;
-		static const int dxdy[dircount] = { 0, -1, 1, 0, 0, 1, -1, 0 };
-#else	
+		//static const int dircount = 8;
+		//static const int dxdy[dircount] = { 0, -1, 1, 0, 0, 1, -1, 0 };
 		static const int dircount = 16;
 		static const int dxdy[dircount] = { 0, -1, 1, 0, 0, 1, -1, 0, 1, -1, 1, 1, -1, 1, -1, -1 };
-#endif
+
 
 		BitArray visited(false, width, height);
 
 		distance.Fill(maxint);
 
-
-		int debugnodecount = 0;
+		//int debugnodecount = 0; //NEW REM
 
 		std::multimap<int, todoitem> todolist;
 		typedef std::pair<int, todoitem> todopair;
 
 		//we start from the goal and try to find the start
 		todolist.insert(todopair{ 0 + Distance_Euclidean(startx, starty, goalx, goaly), { goalx, goaly } });
-
 
 		//make the goal (actually the start) stand out. use distance
 		distance.at(startx, starty) = -1;
@@ -301,13 +417,13 @@ public:
 				}
 				if (distance.at(scanx, scany) == -1){
 					//found the goal (the start)
-					std::chrono::high_resolution_clock::time_point timestop = std::chrono::high_resolution_clock::now();
+					//std::chrono::high_resolution_clock::time_point timestop = std::chrono::high_resolution_clock::now();
 
-					std::chrono::duration<double> timespent =
-						std::chrono::duration_cast<std::chrono::duration<double>>(timestop - timestart);
+					//std::chrono::duration<double> timespent =
+					//	std::chrono::duration_cast<std::chrono::duration<double>>(timestop - timestart);
 
-					std::cout << "Time in sec: " << timespent.count() << std::endl;
-					std::cout << "nodes: " << debugnodecount << std::endl;
+					//std::cout << "Time in sec: " << timespent.count() << std::endl;
+					//std::cout << "nodes: " << debugnodecount << std::endl;
 
 					distance.at(scanx, scany) = maxint - 1;
 					int nodex = startx, nodey = starty;
@@ -327,7 +443,7 @@ public:
 						}
 						lastpath.push_front({ lowestx, lowesty });
 						nodex = lowestx, nodey = lowesty;
-						displaychar.at(lowestx, lowesty) = '*';
+						//displaychar.at(lowestx, lowesty) = '*'; //NEW REM
 					}
 					return true;
 				}
@@ -359,8 +475,8 @@ public:
 			}
 
 			visited.set(t.x, t.y, true);
-			displaychar.at(t.x, t.y) = '.';
-			debugnodecount++;
+			//displaychar.at(t.x, t.y) = '.';//NEW REM
+			//debugnodecount++; //NEW REM
 
 			//	debugcounter++;
 			//	if (debugcounter == 25){
@@ -570,13 +686,15 @@ public:
 		}
 
 		inline void additem(int howmany, Eitemtype it){
-
+			std::cout << "adding " << (int)howmany << " " << dicoarchetype[it].name << std::endl;
 			for (int f = 0; f < howmany; f++){
 				int x, y;
 				freespace(x, y);
 				item_instance* m = new item_instance(it, x, y);
-				itemlist.push_back(m);
-				itemgrid.at(x, y) = itemlist.back();
+				//itemlist.push_back(m);
+				itemput(m, x, y);
+				
+
 			}
 
 		}

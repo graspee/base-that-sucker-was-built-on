@@ -422,18 +422,31 @@ void RLMap::genlevel_rooms(){
 	
 	//place player
 	freespace(player.posx, player.posy);
+	player.level++;
+
 	//place exit
 	int x, y;
 	freespace(x, y);
-	map->displaychar.at(x, y) = 'E';
-	map->locked.set(x, y, true);
+	displaychar.at(x, y) = 'E';
+	locked.set(x, y, true);
+
+	//debug test maziacs
+	//if (PathfindAStar(player.posx, player.posy, x, y)){
+	//	for (auto& f : lastpath){
+	//		displaychar.at(f.x, f.y) = 'L';
+	//	}
+	//}
+	//
+
+
+
 	//place chest containerizing broom
 	freespace(x, y);
-	map->displaychar.at(x, y) = 'C';
-	map->locked.set(x, y, true);
+	displaychar.at(x, y) = 'C';
+	locked.set(x, y, true);
 
 	//cheat add 20 swords
-	additem(20, Eitemtype::ITEM_SWORD);
+	//additem(20, Eitemtype::ITEM_SWORD);
 
 	//add 20 mobs
 	for (int f = 0; f < 20; f++){
@@ -442,7 +455,8 @@ void RLMap::genlevel_rooms(){
 		freespace(x, y);
 		item_instance* m=new item_instance((Eitemtype)lil::rand((int)Eitemtype::MOB_SKEL,(int)Eitemtype::MOB_BAT), x,y);
 		moblist.push_back(m);
-		itemgrid.at(x,y) = moblist.back();
+		itemput(m, x, y);
+		
 		//TODO distance from player check
 	}
 
