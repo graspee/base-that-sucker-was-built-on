@@ -82,23 +82,70 @@ void spriteexit(void){
 
 }
 
-void print(const std::string &s, int x, int y, Uint8 r, Uint8 g, Uint8 b){
+
+void print(const std::string &s, int x=0, int y=-1, Uint8 r=225, Uint8 g=225, Uint8 b=225){
+	static int lasty = 0;
+	if (y == -1){
+		y = lasty+8;
+		lasty = y;
+	}
 	static SDL_Rect srect = { 0, 0, 6, 8 };
 	static SDL_Rect drect = { 0, 0, 6, 8 };
 
 	SDL_SetTextureColorMod(hobbitfont, r, g, b);
 
 	for (auto f : s){
-		srect.x = (f - 33) * 6;
+		srect.x = (f - 32) * 6;
 		drect.x = x;
 		drect.y = y;
 		//SDL_RenderCopy(renderer, hobbitfont,NULL,NULL);
 		SDL_RenderCopy(renderer, hobbitfont, &srect, &drect);
 		x += 6;
 	}
-
-
 }
+void middleprint(const string&s, int y, Uint8 r = 225, Uint8 g = 225, Uint8 b = 225){
+	print(s, (640-(s.size()*6))/2, y, r, g, b);
+}
+void messagelog(const std::string& s,Uint8 _r=225,Uint8 _g=225,Uint8 _b=225){
+	static string log[10] = { "", "", "", "", "", "", "", "", "", ""};
+	static char pointer = 0;
+	static Uint8 rc[10], gc[10], bc[10];
+
+	if (s.size() > 46)
+		log[pointer] = s.substr(0,46);
+	else
+		log[pointer] = s+string(46-s.size(),' ');
+	
+	rc[pointer] = _r, gc[pointer] = _g, bc[pointer] = _b;
+	//pointer++; if (pointer > 9)pointer = 0;
+	
+
+	char g = pointer + 1; if (g > 9)g = 0;
+	for (char f = 0; f < 10; f++){
+		
+		print(log[g], (22 * 16)+6, 360 - (8 * (10 - f)),rc[g],gc[g],bc[g]);
+		g++; if (g>9)g = 0;
+	}
+	pointer++; if (pointer > 9)pointer = 0;
+}
+
+void superprint(const std::string &s, int y, Uint8 r, Uint8 g, Uint8 b, Uint8 opacity){
+	static SDL_Rect srect = { 0, 0, 6, 8 };
+	static SDL_Rect drect = { 0, 0, 60, 80 };
+
+	int x = (640 - (s.size()*60)) / 2;
+	
+	SDL_SetTextureColorMod(hobbitfont, r, g, b);
+	
+	for (auto f : s){
+		srect.x = (f - 32) * 6;
+		drect.x = x;
+		drect.y = y;
+		SDL_RenderCopy(renderer, hobbitfont, &srect, &drect);
+		x += 60;
+	}
+}
+
 inline void drawsprite(int x, int y, SDL_Texture* t){
 	static SDL_Rect r = { 0, 0, 16, 16 };
 	r.x = x, r.y = y;

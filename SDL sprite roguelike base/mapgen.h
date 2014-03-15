@@ -242,7 +242,7 @@ struct Patch {
 
 
 
-inline void print(const std::string s){
+inline void wtfprint(const std::string s){
 	std::cout << s << std::endl;
 }
 
@@ -440,11 +440,18 @@ void RLMap::genlevel_rooms(){
 
 
 
-	//place chest containerizing broom
+	//place broom cupboard containerizing broom
 	freespace(x, y);
 	displaychar.at(x, y) = 'C';
 	locked.set(x, y, true);
 
+
+	//place chest containerizing golden tziken on level 10
+	if (player.level == 10){
+		freespace(x, y);
+		displaychar.at(x, y) = 'c';
+		locked.set(x, y, true);
+	}
 	//cheat add 20 swords
 	//additem(20, Eitemtype::ITEM_SWORD);
 
@@ -465,11 +472,12 @@ void RLMap::genlevel_rooms(){
 	additem(5, Eitemtype::ITEM_GEM);
 	//10 gold
 	additem(10, Eitemtype::ITEM_GOLD);
-	//2 keys
-	additem(2, Eitemtype::ITEM_KEY);
+	//2 keys on level 1-9, 3 on 10
+	additem((player.level==10)?3:2, Eitemtype::ITEM_KEY);
 	//3 random items from batteries/shield/sword/stopwatch/medpack/junk
 	for (size_t i = 0; i < 3; i++)
 	{
+		
 		additem(1, (Eitemtype) lil::rand((int)Eitemtype::ITEM_BATTERY, (int)Eitemtype::ITEM_JUNK));
 	}
 

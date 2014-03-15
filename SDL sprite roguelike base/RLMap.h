@@ -40,6 +40,7 @@ public:
 	
 	Array2D<int> distance;						//this is used by the pathfinding routines
 	std::list<todoitem> lastpath;				//this is filled by the pathfinding routines
+	int firststepx, firststepy;					//used by pathfinding
 
 	vector<pair<int, int>> emptyspaces;			//free squares
 
@@ -97,7 +98,7 @@ public:
 			i->noticedplayer = true;
 			i->behaviour = EBehaviour::BEHAVIOUR_CHASING;
 			//ADDSOUND METAL GEAR SOLID STYLE NOTICED YOU NOISE
-			//ADDSTATUS THE MOB HAS SEEN YOU
+			messagelog("The "+i->type->name+" has seen you!");
 		}
 
 		                    
@@ -109,8 +110,9 @@ public:
 
 		if (i->noticedplayer){
 			if (abs(i->posx - player.posx) <= 1 && abs(i->posy - player.posy) <= 1){
-				//ADDSOUND MOB ATTACKS YOU
-				//STATUS MOB ATTACKS YOU
+				playsound("bite");
+			
+				messagelog("The " + i->type->name + " attacks you for " + to_string(i->type->damagetheydeal * 2) + " damage.", 225, 0, 0);
 				player.damage(i->type->damagetheydeal, true,i->type->name);
 				return;
 			}
@@ -147,11 +149,16 @@ public:
 			//kludge- map cell containing mob or item is normally marked as unpassable
 			//here we temporarily set it to passable for astar to work then set it back after
 			passable.set(i->posx, i->posy, true);
-			bool astar = PathfindAStar(i->posx, i->posy, player.posx, player.posy);
+			
+			bool astar;
+			if (i->type->fitsinvacuum)
+				astar = PathfindAStar(i->posx, i->posy, player.posx, player.posy);
+			else
+				astar = PathfindAStar(i->posx, i->posy, player.posx, player.posy,false);
 			passable.set(i->posx, i->posy, false);
 			if (astar){
-				itemmoveto(i, lastpath.back().x, lastpath.back().y);
-				std::cout << i->type->name << " moved to " << (int)i->posx << " " << (int) i->posy << std::endl;
+				itemmoveto(i, firststepx, firststepy);
+				//std::cout << i->type->name << " moved to " << (int)i->posx << " " << (int) i->posy << std::endl;
 				return;
 			}
 		}
@@ -221,7 +228,7 @@ public:
 	}
 
 	~RLMap(){
-		std::cout << "~map going down";
+		//std::cout << "~map going down";
 		for (size_t y = 0; y < height; y++)
 		{
 			for (size_t x = 0; x < width; x++)
@@ -368,15 +375,19 @@ public:
 
 
 
-	bool PathfindAStar(int startx, int starty, int goalx, int goaly){
+	bool PathfindAStar(int startx, int starty, int goalx, int goaly,bool diags=true,bool fillpath=false){
 		//std::chrono::high_resolution_clock::time_point timestart = std::chrono::high_resolution_clock::now();
 
-		//static const int dircount = 8;
-		//static const int dxdy[dircount] = { 0, -1, 1, 0, 0, 1, -1, 0 };
-		static const int dircount = 16;
-		static const int dxdy[dircount] = { 0, -1, 1, 0, 0, 1, -1, 0, 1, -1, 1, 1, -1, 1, -1, -1 };
+		////old version
+		////static const int dircount = 8;
+		////static const int dxdy[dircount] = { 0, -1, 1, 0, 0, 1, -1, 0 };
+		//static const int dircount = 16;
+		//static const int dxdy[dircount] = { 0, -1, 1, 0, 0, 1, -1, 0, 1, -1, 1, 1, -1, 1, -1, -1 };
+		////end old version
 
-
+		int dircount = (diags) ? 16 : 8;
+		static const int dxdy[16] = {0, -1, 1, 0, 0, 1, -1, 0, 1, -1, 1, 1, -1, 1, -1, -1 };
+		
 		BitArray visited(false, width, height);
 
 		distance.Fill(maxint);
@@ -425,28 +436,44 @@ public:
 					//std::cout << "Time in sec: " << timespent.count() << std::endl;
 					//std::cout << "nodes: " << debugnodecount << std::endl;
 
-					distance.at(scanx, scany) = maxint - 1;
-					int nodex = startx, nodey = starty;
-					lastpath.clear();
+					
+					if (fillpath){
+						distance.at(scanx, scany) = maxint - 1;
+						int nodex = startx, nodey = starty;
+						lastpath.clear();
 
-					int lowest = maxint;
-					while (lowest != 0){
-						int lowestx = maxint - 1, lowesty = maxint - 1;
-						for (auto f = 0; f < dircount; f += 2){
-							int scanx = nodex + dxdy[f];
-							int scany = nodey + dxdy[f + 1];
+						int lowest = maxint;
+						while (lowest != 0){
+							int lowestx = maxint - 1, lowesty = maxint - 1;
+							for (auto f = 0; f < dircount; f += 2){
+								int scanx = nodex + dxdy[f];
+								int scany = nodey + dxdy[f + 1];
+								if (scanx < 0 || scany < 0 || scanx >= width || scany >= height)continue;
+								if (distance.at(scanx, scany) < lowest){
+									lowest = distance.at(scanx, scany);
+									lowestx = scanx, lowesty = scany;
+								}
+							}
+							lastpath.push_front({ lowestx, lowesty });
+							nodex = lowestx, nodey = lowesty;
+							//displaychar.at(lowestx, lowesty) = '*'; //NEW REM
+						}//end while lowest !=0
+					}//end if fill path
+					else {
+						int lowest = maxint;
+						for (char f = 0; f < dircount; f+=2){
+							int scanx = startx + dxdy[f];
+							int scany = starty + dxdy[f + 1];
 							if (scanx < 0 || scany < 0 || scanx >= width || scany >= height)continue;
 							if (distance.at(scanx, scany) < lowest){
 								lowest = distance.at(scanx, scany);
-								lowestx = scanx, lowesty = scany;
+								firststepx = scanx, firststepy = scany;
 							}
 						}
-						lastpath.push_front({ lowestx, lowesty });
-						nodex = lowestx, nodey = lowesty;
-						//displaychar.at(lowestx, lowesty) = '*'; //NEW REM
+						
 					}
 					return true;
-				}
+				}//end found start
 
 
 				//test = test;

@@ -248,9 +248,9 @@ labelvideo:
 labelcontrols:
 	choice = displaymainmenu(controlmenu);
 	switch (choice){
-	case 1:break;//use controller
-	case 2:break;//use kbd
-	case 3:break;//redef controller
+	case 1:goto labelcontrols; break;//use controller
+	case 2:goto labelcontrols; break;//use kbd
+	case 3:goto labelcontrols; break;//redef controller
 	case 4://redef kbd
 		doredefkeys();
 		goto labelcontrols;

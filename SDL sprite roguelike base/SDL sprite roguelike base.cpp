@@ -1,7 +1,10 @@
 
 
 #include "stdafx.h"
-bool gameover = false;
+char gameover = 0;
+bool getmana, turnused;
+
+
 #include "lilhelpers.h"
 
 #include "Array2D.h"
@@ -33,6 +36,8 @@ using std::unordered_map;
 using std::pair;
 using std::make_pair;
 #include "SDL.h"
+
+void scorescreen();
 
 void pangodelay(unsigned int ms){
 	unsigned int cur_t = SDL_GetTicks();
@@ -83,7 +88,7 @@ void loadsprites(void);
 //these are the defaults
 bool OPTION_fullscreen = false;
 char OPTION_res = 1;//0 1 2//myevent.key.keysym.scancode
-enum class commands {N,S,E,W,NW,NE,SW,SE,WAIT,LANTERN,ESCAPE,SUCKBLOW,VAC,SUPERVAC,DROP};
+enum class commands { N, S, E, W, NW, NE, SW, SE, WAIT, LANTERN, SUCKBLOW, VAC, SUPERVAC, USE,  ESCAPE };
 vector<int> OPTION_buttons = {
 	SDL_SCANCODE_KP_8,//N
 	SDL_SCANCODE_KP_2,//S
@@ -95,11 +100,11 @@ vector<int> OPTION_buttons = {
 	SDL_SCANCODE_KP_3,//SE							
 	SDL_SCANCODE_KP_5,//WAIT						
 	SDL_SCANCODE_KP_DIVIDE, //LANTERN	
-	SDL_SCANCODE_ESCAPE, //ESCAPE
 	SDL_SCANCODE_KP_MINUS,//SUCKBLOW TOGGLE
 	SDL_SCANCODE_KP_0,//VAC
 	SDL_SCANCODE_KP_PLUS,//SUPER VAC
-	SDL_SCANCODE_KP_MULTIPLY };//DROP
+	SDL_SCANCODE_KP_MULTIPLY };//, //USE
+	//SDL_SCANCODE_ESCAPE }; //ESCAPE};
 
 							
 							
@@ -108,9 +113,11 @@ bool options_dirty = false; //if set to true in titlepage we need to write optio
 
 unsigned char Scancode_to_command[512];
 
-const string button_names [] = { "WAIT", "NORTH", "NORTH-EAST", "EAST", "SOUTH-EAST",
-"SOUTH", "SOUTH-WEST", "WEST", "NORTH-WEST", "LANTERN", "TOGGLE SUCK/BLOW",
-"ACTIVATE VACUUM", "SUPER ACTIVATE VACUUM", "DROP HELD ITEM" };
+const string button_names [] = {
+	"NORTH","SOUTH", "EAST", "WEST",
+	"NORTH-WEST","NORTH-EAST","SOUTH-WEST" , "SOUTH-EAST",
+	"WAIT",  "LANTERN", "TOGGLE SUCK/BLOW",
+"ACTIVATE VACUUM", "SUPER ACTIVATE VACUUM", "USE HELD ITEM"};
 
 RLMap* map;
 
@@ -118,8 +125,15 @@ RLMap* map;
 
 void killamob(item_instance* i,int x,int y){
 	//ADDSOUND mob death 
-	//ADDSTATUS you kill the mob
-	player.score += 50; //SCORE killing a mob- 50 points
+	messagelog("You kill the " + i->type->name);
+	if (i->type->type==Eitemtype::MOB_BROOM ||
+		i->type->type == Eitemtype::MOB_TZIKEN){
+		player.score -= 500;
+		//lose the 500 you got for rescuing broom or tziken if they die
+	}
+	else {
+		player.score += 50; //SCORE killing a mob- 50 points
+	}
 	//TODO procedural blood. not important
 	lil::removevalue(map->moblist, i);
 	if (i->invacuum){
@@ -254,10 +268,11 @@ bool trytomove(int deltax, int deltay){
 		//if it's an item not a monster
 		if (!i->type->ismob){
 			//ADDSOUND pick up an item
-			//ADDSTATUS you pick up the item
+			//messagelog("You pick up the " + i->type->name);
 			//if player not carrying anything
 			if (player.held == nullptr){
 				//pick it up
+				messagelog("You pick up the " + i->type->name);
 				player.held = i;//object -> player hand
 				map->itemremovefrom(i);//take obj off the map
 				//drawsprite(16 * 12, 21 * 16, i->type->sprite);//draw held item in hand frame
@@ -269,6 +284,7 @@ bool trytomove(int deltax, int deltay){
 				item_instance* temp = player.held;//put player's obj in temp store
 				player.held = i;//object -> player hand
 				map->itemput(temp, tentx, tenty);//put player's prev obj on the map
+				messagelog("You swap your " + temp->type->name+" for the " + i->type->name+".");
 				//drawsprite(16 * 12, 21 * 16, "frame");//draw the frame of player held
 				//drawsprite(16 * 12, 21 * 16, i->type->sprite);//draw held item in hand frame
 				//map->redrawcell(tentx, tenty);//redraw the map cell
@@ -278,13 +294,23 @@ bool trytomove(int deltax, int deltay){
 		else {//it's a monster
 			//if you have a sword
 			if (player.held != nullptr && player.held->type->type == Eitemtype::ITEM_SWORD){
-				//ADDSOUND SWOOSH AND HIT
-				//ADDSTATUS You attack the mob
+				playsound("swoosh");
+				messagelog("You attack the " + i->type->name+".");
 				damagemob(i, tentx, tenty, 1);
+				player.held->uses--;
+				playsound("hit");
+				if (player.held->uses <= 0){
+					//ADDSOUND SWORD SNOP
+					messagelog("Your sword snops and becomes useless!",25,225,25);
+					delete player.held;
+					player.held = nullptr;
+				}
+				else {
+					messagelog("Sword durabiliteh: " + to_string(player.held->uses) + " /5.", 25, 225, 25);
+				}
 				return true;
 			}
 			else {//no sword
-				//ADDSTATUS You have no weapon to attack the mob
 				return false;
 			}
 		}
@@ -296,8 +322,8 @@ bool trytomove(int deltax, int deltay){
 			if (map->locked.get(tentx, tenty)){
 				//if player has key
 				if (player.held != nullptr && player.held->type->type == Eitemtype::ITEM_KEY){
-					//ADDSOUND UNLOCK NOISE
-					//ADDSTATUS YOU UNLOCK THE EXIT
+					playsound("lock");
+					messagelog("You unlock the exit.");
 					delete(player.held);//free obj memory
 					player.held = nullptr;//remove key from hand
 					map->locked.set(tentx, tenty, false);//unlock it
@@ -311,12 +337,17 @@ bool trytomove(int deltax, int deltay){
 				}
 			}
 			else {//exit is not locked
-				//ADDSOUND LEAVING LEVEL
-				//ADDSTATUS You exit the level
+				playsound("endlevel");
+				messagelog("You exit the level.");
+				scorescreen();
 				//std::cout << "you leave the level";//TODO Actually leave level
 				if (player.level == 10){
-					std::cout << "you win the game";
-					
+					messagelog("You win the game.");
+					player.posx = tentx, player.posy = tenty;
+					player.stealthed = true;
+					gameover = 2;
+					return true;//is it true we want here?
+
 				}
 				delete map;
 				map = new RLMap(mapwidth, mapheight);
@@ -327,13 +358,15 @@ bool trytomove(int deltax, int deltay){
 				return true;//delete this
 			}
 			break;
+		
+		
 		case 'C'://broom cupboard
 			//if it's locked
 			if (map->locked.get(tentx, tenty)){
 				//if player has key
 				if (player.held != nullptr && player.held->type->type == Eitemtype::ITEM_KEY){
-					//ADDSOUND UNLOCK NOISE
-					//ADDSTATUS YOU UNLOCK THE broom cupboard
+					playsound("lock");
+					messagelog("You unlock the broom cupboard.");
 					delete(player.held);//free obj memory
 					player.held = nullptr;//remove key from hand
 					map->locked.set(tentx, tenty, false);//unlock it
@@ -347,9 +380,12 @@ bool trytomove(int deltax, int deltay){
 				}
 			}
 			else {//cupboard  is not locked
-				//ADDSOUND RESCUE BROOM
-				//ADDSTATUS INDEPENDENT ENTITY PRINCESS SPACEALINA BROOM EMERGES!
-				player.score += 100; //SCORE : RESCUE BROOM FROM CUPBOARD 100 POINTS
+				playsound("creak");
+				messagelog("You open the broom cupboard.", 225, 225, 25);
+				messagelog("Independent Entity Princess", 225, 225, 25);
+				messagelog("Spacealine Broom emerges!", 225, 225, 25);
+				
+				player.score += 500; //SCORE : RESCUE BROOM FROM CUPBOARD 500 POINTS
 				//std::cout << "broom emerges";//TODO Actually make broom emerge
 				
 				
@@ -363,8 +399,45 @@ bool trytomove(int deltax, int deltay){
 				return true;//delete this
 			}
 			break;
+		case 'c'://chest of golden tziken
+			//if it's locked
+			if (map->locked.get(tentx, tenty)){
+				//if player has key
+				if (player.held != nullptr && player.held->type->type == Eitemtype::ITEM_KEY){
+					playsound("lock");
+					messagelog("You unlock the chest.");
+					delete(player.held);//free obj memory
+					player.held = nullptr;//remove key from hand
+					map->locked.set(tentx, tenty, false);//unlock it
+					return true;
+				}
+				else {//not carrying a key
+					//just move onto the tziken chest
+					player.posx = tentx, player.posy = tenty;
+					moveplayer();
+					return true;
+				}
+			}
+			else {//chest  is not locked
+				playsound("creak");
+				messagelog("You open the chest.",225, 225, 25);
+				messagelog("Independent Entity Golden Tziken Emerges!", 225, 225, 25);
+				player.score += 500; //SCORE : RESCUE TZIKEN FROM CHEST 500 POINTS
+				//std::cout << "broom emerges";//TODO Actually make broom emerge
+
+
+				map->displaychar.at(tentx, tenty) = ' ';
+				item_instance* tziken = new item_instance(Eitemtype::MOB_TZIKEN, tentx, tenty);
+				tziken->behaviour = EBehaviour::BEHAVIOUR_STATIC;
+				map->itemput(tziken, tentx, tenty);
+
+				map->moblist.push_back(tziken);
+
+				return true;//delete this
+			}
+			break;
 		case 'L'://lava
-			player.damage(2, false, " lava");
+			player.damage(1, false, " lava");
 			break;
 		case '#'://wall
 			//do nothing no turn consumed
@@ -384,7 +457,7 @@ bool trytomove(int deltax, int deltay){
 }
 
 //returns true if you should give mana
-bool waitonplayer(){
+void waitonplayer(){
 	static SDL_Event myevent;
 
 	while (1){
@@ -399,19 +472,19 @@ bool waitonplayer(){
 				if ((int)command < 8)//moobment
 					if (trytomove(lil::deltax[(int)command], lil::deltay[(int)command]))
 					{
-						return true;
+						getmana = true; turnused = true; return;
 					}
 					else { continue; }
 				
 				switch (command){
 				case commands::WAIT:
-					//do nothing at all
-					return true;
+					messagelog("You wait. Time passes...");
+					getmana = true; turnused = true; return;
 				case commands::LANTERN:
 					player.lantern = !player.lantern;
 					if (player.lantern)playsound("lantern");
 					moveplayer();
-					return true;
+					getmana = true; turnused = true; return;
 				case commands::ESCAPE://esc. can't be changed
 					godown();
 					exit(0);
@@ -419,23 +492,26 @@ bool waitonplayer(){
 				case commands::SUCKBLOW:
 					player.selectsuck = ! player.selectsuck;
 					playsound(player.selectsuck ? "suck" : "blow");
-					return false;
+					getmana = true; turnused = true; return;
 				case commands::VAC:
 					if (player.mana < 1){
-						//ADDSTATUS not enough power for requested operationz
+						messagelog("Not enough steam!");
 						//ADDSOUND nothing happening with a machine
-						std::cout << "not enough mana";
-						return true;
+						
+						getmana = true; turnused = true; return;
 						//hopefully a turn is used and steam is given.
 					}
 					if (player.selectsuck){
-						if(suck(player.posx, player.posy, 1))
-							return false;
+						if (suck(player.posx, player.posy, 1))
+						{
+							getmana = false; turnused = true; return;
+						}
 						else continue;
 					}
 					else {
-						if (blow(player.posx, player.posy, 1))
-							return false;
+						if (blow(player.posx, player.posy, 1)){
+							getmana = false; turnused = true; return;
+						}
 						else continue;
 						
 					}
@@ -443,25 +519,29 @@ bool waitonplayer(){
 					break;
 				case commands::SUPERVAC:
 					if (player.mana < 5){
-						//ADDSTATUS not enough power for requested operationz
+						messagelog("Not enough steam!");
 						//ADDSOUND nothing happening with a machine
-						std::cout << "not enough mana";
-						return true;
+						
+						 getmana = true; turnused = true; return;
 						//hopefully a turn is used and steam is given.
 					}
 					if (player.selectsuck){
-						if(suck(player.posx, player.posy, 10))
-							return false;
+						if (suck(player.posx, player.posy, 10))
+						{
+							getmana = false; turnused = true; return;
+						}
 						else continue;
 					}
 					else {
 						if (blow(player.posx, player.posy, 10))
-							return false;
+						{
+							getmana = false; turnused = true; return;
+						}
 						else continue;
 					}
 					//return true;
 					break;
-				case commands::DROP:
+				case commands::USE:
 					break;
 
 				}
@@ -473,18 +553,23 @@ bool waitonplayer(){
 
 void timepasses(){
 	//time passes.
-	if (player.mana < 5){
-		playsound("steam");
-		player.mana++;
-		if (player.mana == 5){
-			playsound("ready");
+	if (getmana){
+		if (player.mana < 5){
+			playsound("steam");
+			player.mana++;
+			if (player.mana == 5){
+				playsound("ready");
+			}
 		}
+		getmana = false;
 	}
 	for (auto f : map->moblist){
 		if (!f->invacuum){
 			map->item_getsaturn(f);
 		}
 	}
+
+	
 }
 
 void renderscreen(){
@@ -547,6 +632,9 @@ void renderscreen(){
 			case 'C':
 				ti = dicosprite.at("broom cupboard");
 				break;
+			case 'c':
+				ti = dicosprite.at("coffer");
+				break;
 			default:
 				ti = dicosprite.at("floor");
 				break;
@@ -593,6 +681,9 @@ void renderscreen(){
 					break;
 				case 'C':
 					SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+					break;
+				case 'c':
+					SDL_SetRenderDrawColor(renderer, 225,225,25, 255);
 					break;
 				case '+':
 					SDL_SetRenderDrawColor(renderer, 225, 225, 0, 255);
@@ -663,7 +754,7 @@ void renderscreen(){
 	//USER INTERFACE
 	//maybe move this to a function. think about does it need to get printed each time
 	print("LEBEL: " + lil::numformat(player.level, 2) + " SKOER: " + lil::numformat(player.score, 6) , 0, 352, 0, 225, 225);
-	print("7DRL 2014 DAY FIVE", 400, 0, 225, 225, 225);
+	print("7DRL 2014 DAY SIX", 400, 0, 225, 225, 225);
 	const int botline = 21 * 16;// 360 - 16;
 	const int rightedge = (21 * 16);
 	for (int i = 0; i < 10; i++)
@@ -709,7 +800,6 @@ int main(int argc, char* args[])
 	comeup(); //initialize stuff
 
 
-	
 	setupscanners();//need to do this once anyway. we do it again if options changed (even thought it may not have been keys that were changed omgomg)
 
 
@@ -723,7 +813,6 @@ gameloop:
 	}
 	
 	CLS();
-	
 	playmusic(false);
 
 	if (options_dirty){
@@ -732,13 +821,15 @@ gameloop:
 	}
 
 	//new game begins
-
+	for (char f = 0; f < 9; f++)
+		messagelog("");
+	messagelog("Welcome to Sucker [7DRL 2014]",25,225,225);
 	lil::randseed();
 
 	//setup player
-
 	player.init();
 
+	if (map != nullptr)delete map;
 	map = new RLMap(mapwidth, mapheight);
 	//map->genlevel_rooms();
 	//map->QuickdumpToConsole();
@@ -746,25 +837,124 @@ gameloop:
 	moveplayer();
 	renderscreen();
 	
-
+	//////////////////////////////////main loop
 	while (1){
 
 
 		//wait for player to do something
-		if (waitonplayer()){
+		waitonplayer();
 
-
+		if (turnused){
+			turnused = false;
 			timepasses();
-			
-
 		}
 		
 		renderscreen();
 
+		if (gameover==1){
+			superprint("GAME OVER", 100, 225, 225, 225, 200);
+			SHOW();
+			GetKey();
+			gameover = 0;
+			goto gameloop;
+		}
+		else if (gameover == 2){
+			superprint("YOU WON!", 100, 35, 225, 35,200);
+			SHOW();
+			GetKey();
+			gameover = 0;
+			goto gameloop;
+		}
 	}
+	///////////////////////////////////////////
 
 CleanupAndExit:
 
 	godown();
 	return 0;
+}
+
+void scorescreen(){
+	//pangodelay(2000);
+	//ADDSOUND MAYBE A NOIZ
+
+	CLS();
+
+	middleprint("You return to the depot after a hard level's work.",8);
+	middleprint("You are greeted by Boss Man Barnaby",16);
+	middleprint("'Alright, mate. Let's see whatcha got in ya vac'.",24);
+	if (player.vacuum_chamber.size() == 0){
+		middleprint("'...Nowt?! Fx me, mate, ya gotta try harder!", 32);
+		middleprint("We got all sorts of fxen expenses we gotta pay, ya know.", 40);
+		middleprint("Now get back out there and suck some snip up!'", 48);
+	}
+	else {
+		int y = 64;
+		for (auto f : player.vacuum_chamber){
+			drawsprite(200, y,f->type->sprite);
+			string s;
+			switch (f->type->type){
+			case Eitemtype::MOB_SKEL:case Eitemtype::MOB_KOBBY:
+			case Eitemtype::MOB_GOLEM:case Eitemtype::MOB_CUEB:
+			case Eitemtype::MOB_IMP:case Eitemtype::MOB_BAT:
+			case Eitemtype::MOB_FIRESKEL:case Eitemtype::MOB_CUEBOBJ:
+			s = "We'll release this back into the wild.";
+			
+			break;
+
+			case Eitemtype::MOB_ESR:case Eitemtype::MOB_ESRSHIELD:
+			s = "We'd better send this little fella back to Extra Spaec";
+			break;
+
+			case Eitemtype::MOB_BROOM:case Eitemtype::MOB_BROOMSWORD:
+				s = "YOU DID IT! YOU RESCUED PRINCESS BROOM! [+5000]";
+				player.score += 5000;
+				break;
+
+			case Eitemtype::MOB_TZIKEN:
+				s = "WELL DONE! YOU'RE IN LINE FOR A SUPER PROMOTIONZ! +[20,000]";
+				player.score += 20000;
+				break;
+
+			case Eitemtype::DEAD_BROOM:
+				s = "How sad! But I don't think we've seen the last of him!";
+				break;
+
+			case Eitemtype::DEAD_TZIKEN:
+				s = "AMG THIS IS AWFUL! TRAGIC! THIS IS ... um, tasty actually!";
+				break;
+
+			case Eitemtype::ITEM_GEM:
+				s = "Nice work! Have a bonus! [+500]";
+				player.score += 500;
+				break;
+
+			case Eitemtype::ITEM_GOLD:
+				s = "Good stuff. A small something for you. [+100]";
+				player.score += 100;
+				break;
+				//junk lava
+			case Eitemtype::ITEM_BATTERY: case Eitemtype::ITEM_SHIELD:
+			case Eitemtype::ITEM_STOPWATCH: case Eitemtype::ITEM_SWORD:
+			case Eitemtype::ITEM_MEDPACK: case Eitemtype::ITEM_KEY:
+				s = "I'll put this in the stock cupboard";
+				break;
+			default:
+				s = "No-one wants this crap.";
+				break;
+			}
+			delete f;
+			print(s, 232, y + 8, 134, 201, 66);
+				
+			
+		
+			y += 20;
+		}
+	}
+
+	player.vacuum_chamber.clear();
+
+	middleprint("Press more or less any key to continue", 352);
+	SHOW();
+	GetKey();
 }

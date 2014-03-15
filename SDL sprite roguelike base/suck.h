@@ -39,7 +39,7 @@ bool suck(int operatorx, int operatory, int range){
 		for(char f=0;f<range;f++){
 			curx+=lil::deltax[g], cury+=lil::deltay[g];
 			
-			if (curx==0 || cury==0 || curx>=map->width || cury>=map->height){//if off map
+			if (curx<0 || cury<0 || curx>=map->width || cury>=map->height){//if off map
 				path[g].destx = -1, path[g].desty = -1;//fail
 				goto DongSlicingMadeEasyByGarthStubbs;
 			}
@@ -101,7 +101,7 @@ bool suck(int operatorx, int operatory, int range){
 			drawsprite((player.posx - originx) * 16, (player.posy - originy) * 16, "target sw");
 		if (path[7].destx == -1)
 			drawsprite((player.posx - originx) * 16, (player.posy - originy) * 16, "target se");
-		//ADDSTATUS select direction
+		messagelog("Select direction to suck in.");
 		SHOW();
 		int command= Scancode_to_command[GetKey()];
 		if(command<0 || command>7 || path[command].destx==-1){
@@ -138,14 +138,14 @@ bool suck(int operatorx, int operatory, int range){
 	else
 		player.mana = 0;
 
-	//ADDSOUND SUCKING OBJECT
-	//ADDSTATUS YOU SUCK THE OBJECT
+	playsound("suck");
+
 
 	//if object is too big to fight in vac and it's right next to you anyway then nothing happens
 	//but you did try so it should make a noise and use mana
 	
 	if (i->type->fitsinvacuum == false && path[lastfound].pathlength == 0){
-		//ADDSTATUS it no fit in the vacuum mister player sir
+		messagelog("The "+i->type->name+" is too big to fit in.");
 		//std::cout << "no fit";
 		return true;
 	}
@@ -154,7 +154,7 @@ bool suck(int operatorx, int operatory, int range){
 
 	//animation stage 1- item from its position to next to you
 	if (path[lastfound].pathlength > 0){
-		
+		messagelog("You suck the " + i->type->name + " towards you.");
 
 		//this is where you need to account for lava in the middle of the path
 		//we removed lava check on path gen so check lava each square
@@ -184,7 +184,7 @@ bool suck(int operatorx, int operatory, int range){
 
 	//is vacuum chamber full?
 	if (player.vacuum_chamber.size() == 10){
-		//ADDSTATUS chamber is full
+		messagelog("Vacuum chamber is full.");
 		return true;
 	}
 		
@@ -194,7 +194,7 @@ bool suck(int operatorx, int operatory, int range){
 		
 	//ok now we have room and it fits. INSERTION TIME
 	//ADDSOUND SUCKING INTO CHAMBER
-	//ADDSTATUS ITEM ENTERS CHAMBER
+	messagelog("The " + i->type->name + " enters the vacuum chamber.");
 
 	//animate it
 	map->itemremovefrom(i);

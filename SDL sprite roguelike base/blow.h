@@ -33,7 +33,7 @@ bool blow(int operatorx, int operatory, int range){
 	//if vacuum empty, make noise, use mana, turn consumed but nothing happens
 	if (player.vacuum_chamber.size() == 0){
 		//ADDSOUND BLOW NOISE
-		//ADDSTATUS NOTHING TO BLOW
+		messagelog("Vacuum chamber is empty");
 		return true;
 	}
 	
@@ -45,7 +45,7 @@ bool blow(int operatorx, int operatory, int range){
 		for (char f = 0; f<range; f++){
 			curx += lil::deltax[g], cury += lil::deltay[g];
 
-			if ((curx == 0 || cury == 0 || curx >= map->width || cury >= map->height) || //if off map
+			if ((curx < 0 || cury < 0 || curx >= map->width || cury >= map->height) || //if off map
 				(!map->passable.get(curx, cury)) || //or map not passable, e.g. light or wall
 				(map->itemgrid.at(curx, cury) != nullptr)){ //or map cell has object/mob on it
 				if (path[g].pathlength == 0){
@@ -104,7 +104,7 @@ bool blow(int operatorx, int operatory, int range){
 			drawsprite((player.posx - originx) * 16, (player.posy - originy) * 16, "target sw");
 		if (path[7].destx == -1)
 			drawsprite((player.posx - originx) * 16, (player.posy - originy) * 16, "target se");
-		//ADDSTATUS select direction
+		messagelog("Select direction.");
 		SHOW();
 		int command = Scancode_to_command[GetKey()];
 		if (command<0 || command>7 || path[command].destx == -1){
@@ -132,7 +132,7 @@ bool blow(int operatorx, int operatory, int range){
 		player.mana = 0;
 
 	//ADDSOUND BLOWING OBJECT
-	//ADDSTATUS YOU DISPENSE THE OBJECT
+	messagelog("You blow out the " + i->type->name + ".");
 
 
 	//animation stage 1- out of vacuum chamber
@@ -150,8 +150,8 @@ bool blow(int operatorx, int operatory, int range){
 		pangodelay(50);
 	}
 
-	//ADDSOUND spitting out of CHAMBER
-	//ADDSTATUS ITEM leaves CHAMBER
+	playsound("firegun");
+	
 
 	//animation stage 2- item from next to you to its final resting place
 	//if (path[lastfound].pathlength > 0){
@@ -211,6 +211,7 @@ bool blow(int operatorx, int operatory, int range){
 	if (path[lastfound].pathlength < range){
 		item_instance* i2 = map->itemgrid.at(sx2, sy2);
 		if (i2 != nullptr && i2->type->ismob && i2->type->blownitemdamagesthem){
+			playsound("hit");
 			damagemob(i2,sx2,sy2, 1);
 
 		}

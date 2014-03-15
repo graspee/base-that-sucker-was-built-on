@@ -4,12 +4,18 @@
 
 
 enum class Eitemtype  {
-	NOTHING, MOB_SKEL, MOB_KOBBY, MOB_GOLEM, MOB_CUEB, MOB_IMP, MOB_BAT,
-	MOB_FIRESKEL, MOB_CUEBOBJ, MOB_ESR, MOB_ESRSHIELD, MOB_BROOM, MOB_BROOMSWORD, MOB_TZIKEN,
-	ITEM_GEM, ITEM_GOLD, ITEM_BATTERY, ITEM_SHIELD, ITEM_STOPWATCH, ITEM_SWORD, ITEM_MEDPACK, 
-	ITEM_KEY, ITEM_JUNK, ITEM_LAVA,
+	NOTHING,
+	MOB_SKEL, MOB_KOBBY, MOB_GOLEM, MOB_CUEB,
+	MOB_IMP, MOB_BAT, MOB_FIRESKEL, MOB_CUEBOBJ,
+	MOB_ESR, MOB_ESRSHIELD,
+	
+	MOB_BROOM, MOB_BROOMSWORD, MOB_TZIKEN,
+	
+	ITEM_GEM, ITEM_GOLD, 
+	ITEM_BATTERY, ITEM_SHIELD, ITEM_STOPWATCH, ITEM_SWORD, ITEM_MEDPACK, ITEM_JUNK, 
+	ITEM_LAVA,ITEM_KEY, 
 	DEAD_SKEL, DEAD_KOBBY, DEAD_GOLEM, DEAD_CUEB, DEAD_IMP, DEAD_BAT,
-	DEAD_RABBIT, DEAD_BROOM};
+	DEAD_RABBIT, DEAD_BROOM, DEAD_TZIKEN};
 
 //There is one instance of mob_archetype per monster
 struct item_archetype {
@@ -96,11 +102,15 @@ struct item_instance {
 
 	char movdircurrent = 0;
 
+	int uses=5;
+
 	item_instance(Eitemtype _type, int _x, int _y
 		){
 		posx = _x, posy = _y;
 		type = &dicoarchetype[_type];
 		hp = type->maxhp;
+		uses = 5; //uses should go in archetype really but cba changing all the data for items and only 
+		//have sword using it atm.
 		if (type->ismob)movdircurrent = lil::rand(0, 7);		
 	}
 
@@ -178,7 +188,7 @@ void setupitems(){
 	{ "Battle broom", Eitemtype::MOB_BROOMSWORD, Eitemtype::DEAD_BROOM, dicosprite.at("broom sword"), true, false, 0, 3, 1, true, true, true,false }));
 	
 	dicoarchetype.insert(pair<Eitemtype, item_archetype>(Eitemtype::MOB_TZIKEN,
-	{ "Golden Tziken", Eitemtype::MOB_TZIKEN, Eitemtype::NOTHING, dicosprite.at("golden tziken"), true, false, 0, 3, 0, true, true, true,false }));
+	{ "Golden Tziken", Eitemtype::MOB_TZIKEN, Eitemtype::DEAD_TZIKEN, dicosprite.at("golden tziken"), true, false, 0, 3, 0, true, true, true,false }));
 
 	//ITEMS need to change item and mob numbers maybe just item BATTERY TO JUNK
 
@@ -245,6 +255,9 @@ void setupitems(){
 
 	dicoarchetype.insert(pair<Eitemtype, item_archetype>(Eitemtype::DEAD_BROOM,
 	{ "tomb of broom", Eitemtype::DEAD_BROOM, Eitemtype::NOTHING, dicosprite.at("grave"), false, false, 0, 0, 0, false, true, true, false }));
+
+	dicoarchetype.insert(pair<Eitemtype, item_archetype>(Eitemtype::DEAD_TZIKEN,
+	{ "roast tziken", Eitemtype::DEAD_TZIKEN, Eitemtype::NOTHING, dicosprite.at("roast tziken"), false, false, 0, 0, 0, false, true, true, false }));
 
 	
 
