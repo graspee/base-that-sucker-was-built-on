@@ -168,7 +168,7 @@ void setupitems(){
 	dicoarchetype.insert(pair<Eitemtype, item_archetype>(Eitemtype::MOB_BAT,
 	{ "vampier bat", Eitemtype::MOB_BAT, Eitemtype::DEAD_BAT, dicosprite.at("bat"), true, false, 0, 1, 1, false, true, true, true }));
 
-	dicoarchetype.insert(pair<Eitemtype, item_archetype>(Eitemtype::MOB_SKEL,
+	dicoarchetype.insert(pair<Eitemtype, item_archetype>(Eitemtype::MOB_FIRESKEL,
 	{ "fier skelington", Eitemtype::MOB_FIRESKEL, Eitemtype::DEAD_SKEL, dicosprite.at("fire skel"), true, false, 0, 1, 2, false, true, true, true }));
 
 	dicoarchetype.insert(pair<Eitemtype, item_archetype>(Eitemtype::MOB_CUEBOBJ,

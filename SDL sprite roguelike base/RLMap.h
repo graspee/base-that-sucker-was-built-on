@@ -3,6 +3,9 @@
 #include <functional>
 
 
+void SHOW();
+int  GetKey();
+void damagemob(item_instance* i, int x, int y, int amount);
 
 struct ColouredLight {
 	signed int r, g, b,total;
@@ -24,7 +27,8 @@ private:
 public:
 
 	
-
+	//features to keep track of:
+	int rabbitgatex = -1, rabbitgatey = -1;
 	size_t width, height;						//width and height of the map in cells
 	Array2D<unsigned char> displaychar;			//ASCII char for each cell
 	BitArray passable;							//can player and mobs move through this square yes or no
@@ -47,8 +51,32 @@ public:
 	//we don't want array2d itemgrid because that makes a mob for
 	//each square. we want an array2d of mob*
 	Array2D<item_instance*> itemgrid;
-	vector<item_instance*> moblist;
+	//vector<item_instance*> moblist;
+	list<item_instance*> moblist;
 	//vector<item_instance*> itemlist;
+
+	//give it an x and y and a fn and it returns you a random 8neigbour that matches the fn
+	bool squarecheck(int x, int y, int& outx, int &outy, 
+		std::function<bool(int x, int y)> f){
+
+		vector<char> v;
+
+		for (char i = 0; i < 8; i++){
+			int tentx = x + lil::deltax[i];
+			int tenty = y + lil::deltay[i];
+			if (tentx < 0 || tenty < 0 || tentx >= width || tenty >= height)continue;
+			else {
+				if (f(tentx, tenty))v.push_back(i);
+			}
+		}
+		if (v.size() < 1)return false;
+		else{
+			char which = lil::randmember(v);
+			outx = x + lil::deltax[which];
+			outy = y + lil::deltay[which];
+			return true;
+		}
+	}
 
 	inline void itemremovefrom(item_instance* i){
 		itemgrid.at(i->posx, i->posy) = nullptr;
@@ -68,6 +96,7 @@ public:
 	inline void itemmoveto(item_instance* i,int x, int y){
 		itemremovefrom(i);
 		itemput(i,x, y);
+		seewhatmobmakesofsquare(i, x, y);
 	}
 
 	char getrandomblanksurround(item_instance* i){
@@ -87,8 +116,12 @@ public:
 		else return lil::randmember(v);
 
 	}
-
+	inline bool onscreen(int x, int y){
+		return (x >= originx && y >= originy
+			&&x < originx + 21 && y < originy + 21);
+	}
 	void item_getsaturn(item_instance* i){
+		//std::cout << "getsaturn " << (int) originx << " " << (int) originy << std::endl;
 		if (in_FOV.get(i->posx, i->posy)							//if this item is in your field of view
 			&& i->type->ismob										//and it's a mob
 			&& i->type->aggressive									//and that mob is of an aggressive type
@@ -101,7 +134,77 @@ public:
 			messagelog("The "+i->type->name+" has seen you!");
 		}
 
-		                    
+		//mobs can notice you and attack you on the same turn- is this wise? especially now
+		//we have death-dealing laser rabbits
+
+		//ESR laser attack
+		if (i->type->type == Eitemtype::MOB_ESR || i->type->type == Eitemtype::MOB_ESRSHIELD){
+			if (i->noticedplayer && !player.stealthed &&
+				onscreen(i->posx, i->posy)){
+				int dx = abs(i->posx - player.posx);
+				int dy = abs(i->posy - player.posy);
+				if (
+					(i->posx==player.posx || i->posy==player.posy || dx == dy)
+					&& (dx>1 || dy>1)
+					){
+					//does rabbit have kleer shot?
+					//god i'm so fucking tired
+					//can't fucking think any more
+					//11:36 am 16 march 2014
+					//6h24m to deadline
+					bool kleershot = true;
+					int curx = i->posx, cury = i->posy;
+					while (!(curx == player.posx && cury == player.posy)){
+						if (curx > player.posx)curx--;
+						if (curx < player.posx)curx++;
+						if (cury > player.posy)cury--;
+						if (cury < player.posy)cury++;
+						if (passable.get(curx, cury) == false){
+							kleershot = false;
+							break;
+						}
+					}
+					if (kleershot){
+						playsound("laser");
+						
+						SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+						renderscreen();
+						//laser "effect"
+						int curx = ((i->posx - originx)*16), cury = ((i->posy - originy)*16);
+						int destx = ((player.posx - originx) * 16) ;
+						int desty = ((player.posy - originy) * 16) ;
+						
+						
+						
+						while (!(curx == destx && cury == desty)){
+							if (curx > destx)curx--;
+							if (curx <destx)curx++;
+							if (cury > desty)cury--;
+							if (cury < desty)cury++;
+							drawsprite(curx, cury, "laser");
+							//SHOW();
+							//GetKey();
+						}
+						
+						messagelog("The ESR fires at you.");
+						player.damage(1, false, "rabbit laser fire");
+						SHOW();
+						pangodelay(500);
+						
+						return;
+					
+					}
+
+				}
+			}
+				//in_FOV.get(i->posx,i->posy))
+
+			//if in fov
+			//if its x is same as yours or its y is
+			//or its x diff from you (abs) = its abs y diff from you
+		}
+
+
 		//check all directions from mob. if there's something the mob wants then 
 		//it gets it
 		//broom - treasure and sword, battle broom - mob
@@ -713,19 +816,64 @@ public:
 		}
 
 		inline void additem(int howmany, Eitemtype it){
-			std::cout << "adding " << (int)howmany << " " << dicoarchetype[it].name << std::endl;
+			//std::cout << "adding " << (int)howmany << " " << dicoarchetype[it].name << std::endl;
 			for (int f = 0; f < howmany; f++){
 				int x, y;
 				freespace(x, y);
 				item_instance* m = new item_instance(it, x, y);
 				//itemlist.push_back(m);
 				itemput(m, x, y);
-				
-
 			}
-
+		}
+		inline void addmob(int howmany, Eitemtype it){
+			for (int f = 0; f < howmany; f++){
+				int x, y;
+				freespace(x, y);
+				item_instance* m = new item_instance(it, x, y);
+				moblist.push_back(m);
+				itemput(m, x, y);
+			}
 		}
 
+		//works in vac and out
+		void transform_mob(item_instance* i,int x, int y, Eitemtype type){
+			item_instance*i2= new item_instance(type, x, y);
+			i2->invacuum = i->invacuum;
+			if (i->invacuum){
+				lil::replacevalue(player.vacuum_chamber, i, i2);
+			}
+			else {
+				itemput(i2, x, y);
+			}
+			lil::replacevalue(moblist, i, i2);
+			delete i;
+		}
+
+		void seewhatmobmakesofsquare(item_instance*i,int x,int y){
+			if (displaychar.at(x, y) == 'L'){
+				if (i->type->type == Eitemtype::MOB_SKEL){
+					messagelog("The skelington burns!", 255, 165, 0);
+					messagelog("A more dangerous foe appears!", 255, 165, 0);
+					transform_mob(i, x, y, Eitemtype::MOB_FIRESKEL);
+					return;
+				}
+				if (i->type->ismob && i->type->lavadamagesthem){
+					messagelog("The " + i->type->name + " burns.");
+					//ADDSOUND BURN
+					damagemob(i, x, y, 1);
+				}
+			}
+		}
+
+		void lavaize(int x, int y){
+			displaychar.at(x, y) = 'L';
+			//if skel on square- becomes fire skel
+			item_instance* i = itemgrid.at(x, y);
+			if (i != nullptr){
+				seewhatmobmakesofsquare(i, x, y);
+			}
+			
+		}
 };
 
 const int RLMap::multipliers[4][8] = {

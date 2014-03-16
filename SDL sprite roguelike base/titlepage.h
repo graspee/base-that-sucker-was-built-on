@@ -37,7 +37,57 @@ inline void drawblankline(char pos){
 	SHOW();
 }
 
+void instructions(){
+	CLS();
+	middleprint("Sucker: Instructions", 0, 200, 140, 200);
 
+	print("You are Pango Pango, an employee of the Happillama Realtech corporation. Your job is to investigate", 0, 16, 200, 140, 200);
+	print("seemingly-abandoned space vessels and bring back valuable treasure. In order to do your job you have");
+	print("been given a state-of-the-art vacuum device which sucks up and shrinks down matter, living or dead.");
+
+	print("");
+	print("The device normally keeps items in stasis to prevent them going off, exploding or fighting each other");
+	print("but your device has always been less than 100% functional and so will only achieve stasis if you use");
+	print("a stasis device you may find on your travels.");
+	print("");
+
+	print("The device has two modes: suck and blow. The device consumes steam to operate. The steam will build up");
+	print("over time, one unit at a time, to a maximum of 5 units. Normal sucking or blowing uses one unit of");
+	print("steam, but you can also use super mode which is more powerful but needs and consumes all 5 units of steam.");
+	print("");
+	print("A normal suck will suck in a monster or item on one of the 8 squares around you. If there's more than one");
+	print("target then a selector will show you which are valid directions and you can press a direction to confirm.");
+	print("In super mode, sucking will be able to suck an item or monster right across the room and into your weapon.");
+	print("Some things are too big to fit in the chamber of your vacuum, but you can still suck them towards you.");
+
+	print("");
+	print("Blowing will blow the topmost item out of your vacuum. In normal mode this will deposit the item onto one");
+	print("of the 8 squares around you. In super mode the item will shoot out across the room and can even damage");
+	print("mobs that are in the way. Do note though, that you can't fire an item at a mob that is right next to you");
+	print("as there would be no room.");
+
+	print("");
+	print("Sucking, blowing and changing the toggle switch from suck to blow or vice versa all use up one turn.");
+	print("To pick up an item just bump into it. If you are already carrying an item it will be swapped.");
+	print("Some things you will find are locked, e.g. the exit or the broom cupboard (Please rescue broom!)");
+	print("To unlock something, simply be carrying a key and bump into it, then bump into it again to open it or");
+	print("leave in the case of the exit. You can't drop the item you're carrying, only swap it with another.");
+	print("");
+	print("There is still an option for a controller to be used but it doesn't work, sorry. You can redefine the keys");
+	print("from the menu. F1 to F4 raise and lower the music and sound effect volume while in the game. All settings");
+	print("are saved in a file called optionz.dat. If the game ever acts weirdly, a good first step is to delete this");
+	print("file so the screen size, keys and sound volumes are reset to the defaults.");
+	print("");
+	print("7DRL version notes: although I consider this a success there are several things I didn't get a chance");
+	print("to implement. Nothing happens in the vacuum chamber. Mobs were supposed to fight each other, pick up and");
+	print("use items there were next to and so on. On the map, cubes were supposed to pick up items randomly, bombers");
+	print("were supposed to throw bombs that exploded after 5 turns and mobs were supposed to pick up and use various");
+	print("items. I will be adding all this and more, I hope, if my enthusiasm for the game continues after 7drl end.");
+
+
+	SHOW();
+	GetKey();
+}
 
 void spritetest(){
 	CLS();
@@ -66,11 +116,12 @@ void doredefkeys(){
 	print("REDEFINE KEYS:", 0, 0, 225, 225, 40);
 	print("<esc> to cancel changes and go back, Enter/Return to accept them and go back.", 0, 16, 225, 225, 40);
 	print("Up and Down arrows to move, space to set key.", 0, 8, 225, 225, 0);
+	print("Non-bindable: In game: F1-F4 set fx/music vol; ESC quits to title screen.", 0, 24, 75, 211, 41);
 	SHOW();
 	int howmany = 0;
 	for (auto f : OPTION_buttons_copy){
 		print(button_names[howmany], 150, 50 + 20 * howmany, 40, 225, 225);
-		print(SDL_GetKeyName(SDL_GetKeyFromScancode(SDL_Scancode(f))), 250, 50 + 20 * howmany, 40, 75, 250);
+		print(SDL_GetKeyName(SDL_GetKeyFromScancode(SDL_Scancode(f))), 300, 50 + 20 * howmany, 40, 75, 250);
 		howmany++;
 	}
 	howmany--;
@@ -186,7 +237,7 @@ int displaymainmenu(vector<string>& s, bool istop = false){
 
 bool dotitlepage(){
 	
-	vector<string> mainmenu  = { "Play game", "Instructions", "Options", "Exit" };
+	vector<string> mainmenu  = { "Play game", "Instructions", "Sprite Test", "Options", "Exit" };
 	vector<string> optionsmenu = { "Video", "Controls" };
 	vector<string> videomenu = { "Fullscreen", "Windowed", "640x360", "1280x720", "1920x1080" };
 	vector<string> controlmenu = { "Use Controller", "Use Keyboard", "Redefine Controller Buttons", "Redefine Keys" };
@@ -199,11 +250,15 @@ bool dotitlepage(){
 			SHOW();
 			return true; break;
 		case 2://instructions
+			instructions();
+			goto labelmain;
+			break;
+		case 3://sprite test
 			spritetest();
 			goto labelmain;
 			break;
-		case 3:goto labeloptions;break;//options
-		case 4:return false; break;//exit
+		case 4:goto labeloptions;break;//options
+		case 5:return false; break;//exit
 	}
 	labeloptions:
 	choice = displaymainmenu(optionsmenu);

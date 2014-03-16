@@ -5,6 +5,7 @@ char gameover = 0;
 bool getmana, turnused;
 
 
+
 #include "lilhelpers.h"
 
 #include "Array2D.h"
@@ -20,6 +21,7 @@ using std::to_string;
 #include <array>
 using std::array;
 #include <list>
+using std::list;
 #include <map>
 
 #include <cmath>
@@ -88,7 +90,9 @@ void loadsprites(void);
 //these are the defaults
 bool OPTION_fullscreen = false;
 char OPTION_res = 1;//0 1 2//myevent.key.keysym.scancode
-enum class commands { N, S, E, W, NW, NE, SW, SE, WAIT, LANTERN, SUCKBLOW, VAC, SUPERVAC, USE,  ESCAPE };
+enum class commands { N, S, E, W, NW, NE, SW, SE, WAIT, LANTERN, SUCKBLOW, VAC, SUPERVAC, USE,  ESCAPE,
+MUSUP,MUSDOWN,FXUP,FXDOWN};
+
 vector<int> OPTION_buttons = {
 	SDL_SCANCODE_KP_8,//N
 	SDL_SCANCODE_KP_2,//S
@@ -124,7 +128,7 @@ RLMap* map;
 
 
 void killamob(item_instance* i,int x,int y){
-	//ADDSOUND mob death 
+	//ADDSOUND kill mob , mob dies
 	messagelog("You kill the " + i->type->name);
 	if (i->type->type==Eitemtype::MOB_BROOM ||
 		i->type->type == Eitemtype::MOB_TZIKEN){
@@ -135,12 +139,25 @@ void killamob(item_instance* i,int x,int y){
 		player.score += 50; //SCORE killing a mob- 50 points
 	}
 	//TODO procedural blood. not important
-	lil::removevalue(map->moblist, i);
+	//lil::removevalue(map->moblist, i); //because of problem we don't remove from moblist yet
+	lil::replacevalue(map->moblist, i, (item_instance*)nullptr); // new because of problem
 	if (i->invacuum){
 		lil::replacevalue(player.vacuum_chamber,i,
 		 new item_instance(i->type->deadoneofthem, x, y));
 	}
 	else {
+		//imp die on map leave lava
+		//square itself plus 2 neighbours
+		if (i->type->type == Eitemtype::MOB_IMP){
+			map->lavaize(x, y);
+			for (char lavatwice = 0; lavatwice < 2; lavatwice++){
+				int x2, y2; //ALL HAIL TEH LAMB-DAH
+				if (map->squarecheck(x, y, x2, y2,
+					[](int x, int y){return map->displaychar.at(x, y) == ' '; }
+					))
+					map->lavaize(x2, y2);
+			}
+		}
 		item_instance* i2=new item_instance(i->type->deadoneofthem, x, y);
 		map->itemput(i2, x, y);
 		
@@ -182,9 +199,11 @@ void loadopts(){
 	file.read(buffer, 128);
 	OPTION_fullscreen = (buffer[0] == 0) ? false : true;
 	OPTION_res = buffer[1];
+	fxvol = buffer[2];
+	musvol = buffer[3];
 	int siez=OPTION_buttons.size();
 	for (int upto=0; upto < siez; upto++){
-		OPTION_buttons[upto] = buffer[upto+2];
+		OPTION_buttons[upto] = buffer[upto+4];
 	}
 	file.close();
 }
@@ -195,12 +214,17 @@ void saveopts(){
 	file.open(ASSET("optionz.dat"),std::ios::out | std::ios::binary);
 	buffer[0] = (OPTION_fullscreen == false) ? 0 : 1;
 	buffer[1] = OPTION_res;
-	int upto = 2;
+	buffer[2] = fxvol;
+	buffer[3] = musvol;
+
+	int upto = 4;
 	for (auto f: OPTION_buttons){
 		buffer[upto++] = f;
 	}
 	file.write(buffer, 128);
 	file.close();
+
+	options_dirty = false;
 }
 
 void comeup(){
@@ -237,6 +261,11 @@ void setupscanners(){
 	char b = 0;
 	for (auto f : OPTION_buttons)Scancode_to_command[f] = b++;
 	Scancode_to_command[41] = (int)commands::ESCAPE;
+	Scancode_to_command[SDL_SCANCODE_F1] = (int) commands::MUSDOWN;
+	Scancode_to_command[SDL_SCANCODE_F2] = (int) commands::MUSUP;
+	Scancode_to_command[SDL_SCANCODE_F3] = (int) commands::FXDOWN;
+	Scancode_to_command[SDL_SCANCODE_F4] = (int) commands::FXUP;
+
 }
 void moveplayer(){
 	map->do_fov_rec_shadowcast(player.posx, player.posy, 11);
@@ -436,15 +465,15 @@ bool trytomove(int deltax, int deltay){
 				return true;//delete this
 			}
 			break;
-		case 'L'://lava
-			player.damage(1, false, " lava");
-			break;
+		//case 'L'://lava
+			
+			//break;
 		case '#'://wall
 			//do nothing no turn consumed
 			//ADD SOUND WALL BUMP?
 			return false;
 			break;
-		case ' ':
+		case ' ':case 'L':case 'G': // floor, lava, rabbit gate
 			player.posx = tentx, player.posy = tenty;
 			moveplayer();
 			return true;
@@ -482,16 +511,24 @@ void waitonplayer(){
 					getmana = true; turnused = true; return;
 				case commands::LANTERN:
 					player.lantern = !player.lantern;
-					if (player.lantern)playsound("lantern");
+					if (player.lantern){
+						playsound("lantern");
+						messagelog("You light your torch.");
+					}
+					else {
+						messagelog("You put your torch out.");
+					}
 					moveplayer();
 					getmana = true; turnused = true; return;
 				case commands::ESCAPE://esc. can't be changed
-					godown();
-					exit(0);
+					gameover = 3;
+					return;
+					//godown();
+					//exit(0);
 					break;
 				case commands::SUCKBLOW:
 					player.selectsuck = ! player.selectsuck;
-					playsound(player.selectsuck ? "suck" : "blow");
+					playsound(player.selectsuck ? "suckswitch" : "blow");
 					getmana = true; turnused = true; return;
 				case commands::VAC:
 					if (player.mana < 1){
@@ -541,7 +578,99 @@ void waitonplayer(){
 					}
 					//return true;
 					break;
+					
+				case commands::MUSDOWN:
+					if (musvol == 0){
+						messagelog("Music already on 00%");
+						SHOW();
+						continue;
+					}
+					else {
+						musvol -= 5;
+						messagelog("Music turned down to " + to_string(musvol) + "%");
+						SHOW();
+						setvol(fxvol, musvol);
+						options_dirty = true;
+						continue;
+					}
+					break;
+				case commands::MUSUP:
+					if (musvol == 100){
+						messagelog("Music already on 100%");
+						SHOW();
+						continue;
+					}
+					else {
+						musvol += 5;
+						messagelog("Music turned up to " + to_string(musvol) + "%");
+						SHOW();
+						setvol(fxvol, musvol);
+						options_dirty = true;
+						continue;
+					}
+					break;
+				case commands::FXDOWN:
+					if (fxvol == 0){
+						messagelog("FX already on 00%");
+						SHOW();
+						continue;
+					}
+					else {
+						fxvol -= 5;
+						messagelog("FX turned down to " + to_string(fxvol) + "%");
+						SHOW();
+						setvol(fxvol, musvol);
+						options_dirty = true;
+						continue;
+					}
+					break;
+				case commands::FXUP:
+					if (fxvol == 100){
+						messagelog("FX already on 100%");
+						SHOW();
+						continue;
+					}
+					else {
+						fxvol += 5;
+						messagelog("FX turned up to " + to_string(fxvol) + "%");
+						SHOW();
+						setvol(fxvol, musvol);
+						options_dirty = true;
+						continue;
+					}
+					break;
 				case commands::USE:
+					if (player.held == nullptr){
+						messagelog("You are holding nothing to use.");
+						continue;
+					}
+					else {
+						switch (player.held->type->type){
+						case Eitemtype::ITEM_BATTERY:
+							player.mana = 5;
+							goto usedsomething;
+							break;
+						case Eitemtype::ITEM_STOPWATCH:
+							player.stasis = 10;
+							goto usedsomething;
+							break;
+						case Eitemtype::ITEM_MEDPACK:
+							player.hp += 10;//can overheal
+							if (heartplaying)stopsound();
+							goto usedsomething;
+							break;
+						default:
+							messagelog("You can't 'use' the " + player.held->type->name + ".");
+							continue;
+							break;
+						}
+					usedsomething:
+						messagelog("You use the " + player.held->type->name + ".");
+						delete player.held;  player.held = nullptr;
+						playsound("bonus");
+						getmana = true; turnused = true; return;
+						
+					}
 					break;
 
 				}
@@ -553,6 +682,11 @@ void waitonplayer(){
 
 void timepasses(){
 	//time passes.
+
+	player.turns++;
+	if (player.turns == 100){
+		messagelog("The Extra Spaec Gate is active!", 139, 0, 204);
+	}
 	if (getmana){
 		if (player.mana < 5){
 			playsound("steam");
@@ -562,12 +696,45 @@ void timepasses(){
 			}
 		}
 		getmana = false;
-	}
+	}//PROBLEM (DELETING ITEMS FROM VECTOR WHILE ITERATING OVER IT)
 	for (auto f : map->moblist){
-		if (!f->invacuum){
-			map->item_getsaturn(f);
+		if (f != nullptr){
+			if (!f->invacuum){
+				//std::cout << "first time " << (int) originx << " " << (int) originy << std::endl;
+				map->item_getsaturn(f);
+			}
 		}
 	}
+	map->moblist.remove(0);//for problem
+
+	//rabbit gating in chance
+	if (player.turns > 100){
+		if (lil::rand(1, 100) <2){ // rabbit love <3 RIP Hetmann 16/03/14
+			int rx, ry;
+			bool check = map->squarecheck(map->rabbitgatex, map->rabbitgatey, rx, ry,
+				[](int x, int y){return map->passable.get(x, y); }
+			);
+			if (check){
+				messagelog("ESR Rifle Trooper gated in.", 200, 162, 200);
+				item_instance* m = new item_instance(Eitemtype::MOB_ESR, rx, ry);
+				map->moblist.push_back(m);
+				map->itemput(m, rx, ry);
+			}
+		}
+	}
+
+
+	if (player.stasis > 0){
+		player.stasis--;
+		if (player.stasis == 0){
+			messagelog("Stasis of vacuum chamber ended", 25, 25, 225);
+		}
+	}
+	else {
+		//possible items in vac action
+		;
+	}
+
 
 	
 }
@@ -626,6 +793,9 @@ void renderscreen(){
 			case 'L':
 				ti = dicosprite.at("lava");
 				break;
+			case 'G':
+				ti = dicosprite.at("gate");
+				break;
 			case 'E':
 				ti = dicosprite.at("exit");
 				break;
@@ -660,7 +830,7 @@ void renderscreen(){
 				if (m != nullptr){
 					SDL_RenderCopy(renderer, m->type->sprite, NULL, &rect);
 					if (m->noticedplayer)
-						SDL_RenderCopy(renderer,dicosprite.at("noticed"), NULL, &rect);
+						SDL_RenderCopy(renderer, dicosprite.at("noticed"), NULL, &rect);
 
 				}
 				//end render mob
@@ -683,7 +853,7 @@ void renderscreen(){
 					SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
 					break;
 				case 'c':
-					SDL_SetRenderDrawColor(renderer, 225,225,25, 255);
+					SDL_SetRenderDrawColor(renderer, 225, 225, 25, 255);
 					break;
 				case '+':
 					SDL_SetRenderDrawColor(renderer, 225, 225, 0, 255);
@@ -753,8 +923,18 @@ void renderscreen(){
 
 	//USER INTERFACE
 	//maybe move this to a function. think about does it need to get printed each time
-	print("LEBEL: " + lil::numformat(player.level, 2) + " SKOER: " + lil::numformat(player.score, 6) , 0, 352, 0, 225, 225);
-	print("7DRL 2014 DAY SIX", 400, 0, 225, 225, 225);
+	char sworddura;
+	if (player.held != nullptr && player.held->type->type ==Eitemtype::ITEM_SWORD)
+		sworddura = player.held->uses;
+	else sworddura = 0;
+	print("LEBEL: " + lil::numformat(player.level, 2)
+		+ " SKOER: " + lil::numformat(player.score, 6)
+		+ " HP " + lil::numformat(player.hp, 3)
+		+ " turn " + lil::numformat(player.turns,4)
+		+ " stasis " + lil::numformat(player.stasis, 2)
+		+ " sword " + to_string(sworddura)
+		, 0, 352, 0, 225, 225);
+	//print("7DRL 2014 DAY SIX", 400, 0, 225, 225, 225);
 	const int botline = 21 * 16;// 360 - 16;
 	const int rightedge = (21 * 16);
 	for (int i = 0; i < 10; i++)
@@ -844,18 +1024,38 @@ gameloop:
 		//wait for player to do something
 		waitonplayer();
 
+		
+
+		if (gameover == 3){
+			gameover = 0;
+			if (options_dirty)saveopts();//save options if music and sound vol changed in game
+			goto gameloop;
+		}
+
 		if (turnused){
 			turnused = false;
+			//std::cout << "first time " << (int) originx << " " << (int) originy << std::endl;
 			timepasses();
+			//std::cout << "2nd time " << (int) originx << " " << (int) originy << std::endl;
+			if (map->displaychar.at(player.posx, player.posy) == 'L'){
+				player.damage(1, false, " lava");
+				//ADDSOUND BURN
+				messagelog("You burn!", 225, 0, 0);
+				player.damage(2, false, "burning lava.");
+			}
 		}
-		
-		renderscreen();
 
+
+		renderscreen();
+		
+	
+		
 		if (gameover==1){
 			superprint("GAME OVER", 100, 225, 225, 225, 200);
 			SHOW();
 			GetKey();
 			gameover = 0;
+			if (options_dirty)saveopts();//save options if music and sound vol changed in game
 			goto gameloop;
 		}
 		else if (gameover == 2){
@@ -863,6 +1063,7 @@ gameloop:
 			SHOW();
 			GetKey();
 			gameover = 0;
+			if (options_dirty)saveopts();//save options if music and sound vol changed in game
 			goto gameloop;
 		}
 	}

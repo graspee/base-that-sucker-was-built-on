@@ -419,16 +419,6 @@ void RLMap::genlevel_rooms(){
 			
 		}
 	}
-	
-	//place player
-	freespace(player.posx, player.posy);
-	player.level++;
-
-	//place exit
-	int x, y;
-	freespace(x, y);
-	displaychar.at(x, y) = 'E';
-	locked.set(x, y, true);
 
 	//debug test maziacs
 	//if (PathfindAStar(player.posx, player.posy, x, y)){
@@ -439,6 +429,33 @@ void RLMap::genlevel_rooms(){
 	//
 
 
+	//PLACE STUFF ITEMS PLAYER MOBS EXIT ETC
+
+	//current cheats 20 extra swords, 20 extra imps
+	//additem(20, Eitemtype::ITEM_SWORD);
+	//addmob(20, Eitemtype::MOB_ESR);
+	//addmob(20, Eitemtype::MOB_SKEL);
+	//additem(20, Eitemtype::ITEM_BATTERY);
+	//additem(20, Eitemtype::ITEM_MEDPACK);
+
+	player.hp = 10;
+
+
+	//place player
+	freespace(player.posx, player.posy);
+	player.level++;
+	player.turns = 0;
+
+	//place exit
+	int x, y;
+	freespace(x, y);
+	displaychar.at(x, y) = 'E';
+	locked.set(x, y, true);
+
+	//place rabbit gate
+	freespace(x, y);
+	displaychar.at(x, y) = 'G';
+	rabbitgatex = x, rabbitgatey = y;
 
 	//place broom cupboard containerizing broom
 	freespace(x, y);
@@ -452,19 +469,12 @@ void RLMap::genlevel_rooms(){
 		displaychar.at(x, y) = 'c';
 		locked.set(x, y, true);
 	}
-	//cheat add 20 swords
-	//additem(20, Eitemtype::ITEM_SWORD);
+	
 
 	//add 20 mobs
+	//TODO distance from player check
 	for (int f = 0; f < 20; f++){
-		//we don't want array 2d
-		int x, y;
-		freespace(x, y);
-		item_instance* m=new item_instance((Eitemtype)lil::rand((int)Eitemtype::MOB_SKEL,(int)Eitemtype::MOB_BAT), x,y);
-		moblist.push_back(m);
-		itemput(m, x, y);
-		
-		//TODO distance from player check
+		addmob(1,(Eitemtype) lil::rand( (int)Eitemtype::MOB_SKEL, (int)Eitemtype::MOB_BAT ));
 	}
 
 	//add 20 items

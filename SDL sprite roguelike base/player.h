@@ -15,9 +15,10 @@ struct Player {
 	vector<item_instance*> vacuum_chamber;
 	bool stealthed = false;
 	int level = 0;
-
+	char stasis = 0;
 	bool devcheat = false;
 
+	int turns = 0;
 
 	Player(){
 		init();
@@ -27,9 +28,11 @@ struct Player {
 		posx = 0, posy = 0;
 		lantern = true, stealthed = false;
 		
-		hp = 10, mana = 0;
+		hp = 10, mana = 0; stasis = 0;
 
 		selectsuck = true, score = 0, level = 0;
+
+		turns = 0;
 
 		if (held != nullptr){
 			delete held;

@@ -216,9 +216,9 @@ bool blow(int operatorx, int operatory, int range){
 
 		}
 	}
-
-
-
+	
+	
+	map->seewhatmobmakesofsquare(i, sx, sy);
 
 	return true;
 

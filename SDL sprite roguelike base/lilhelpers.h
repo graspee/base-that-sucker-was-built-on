@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+#include <list>
 
 #define coldex(x) pe.palette->u32vals[##x]
 #define coldexp(x) pe->palette->u32vals[##x]
@@ -112,6 +113,17 @@ namespace lil {
 	inline void replacevalue(std::vector<T>& v, T value, T newvalue){
 		*find(v.begin(), v.end(), value)=newvalue;
 	}
+
+	//new for PROBLEM
+	template <typename T>
+	inline void removevalue(std::list<T>& v, T value){
+		v.remove(value);
+	}
+	template <typename T>
+	inline void replacevalue(std::list<T>& v, T value, T newvalue){
+		*find(v.begin(), v.end(), value) = newvalue;
+	}
+
 
 }
 

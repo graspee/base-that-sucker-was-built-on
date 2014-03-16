@@ -83,12 +83,20 @@ void spriteexit(void){
 }
 
 
-void print(const std::string &s, int x=0, int y=-1, Uint8 r=225, Uint8 g=225, Uint8 b=225){
+void print(const std::string &s, int x=0, int y=-1, Uint8 r=0, Uint8 g=0, Uint8 b=0){
 	static int lasty = 0;
+	static Uint8 lastr=225, lastg=225, lastb=225;
 	if (y == -1){
 		y = lasty+8;
 		lasty = y;
 	}
+	else lasty = y;
+
+	if (r == 0 && g == 0 && b == 0){
+		r = lastr, g = lastg, b = lastb;
+	} else
+	lastr = r, lastg = g, lastb = b;
+
 	static SDL_Rect srect = { 0, 0, 6, 8 };
 	static SDL_Rect drect = { 0, 0, 6, 8 };
 
