@@ -11,6 +11,8 @@ struct ColouredLight {
 	signed int r, g, b,total;
 };
 
+static const ColouredLight walllight = { 255, 79, 0 };
+
 //RLMAP REPRESENTS ONE RL GAME MAP OR LEVEL
 class RLMap {
 private:
@@ -756,13 +758,13 @@ public:
 	inline void dolight(uint x1, uint y1, uint x2, uint y2,
 		uint r, const ColouredLight& colour, ColouredLight& store){
 		//nice lave with 3 + ds /5 and radius 9
-		float c1 = 1.0 / (1.0 + Distance_Squared(x1, y1, x2, y2) / 10);
-		float c2 = c1 - 1.0 / (1.0 + r*r);
-		float c3 = c2 / (1.0 - 1.0 / (1.0 + r*r));
+		double c1 = 1.0 / (1.0 + (double)(Distance_Squared(x1, y1, x2, y2)) / 20.0);
+		double c2 = c1 - 1.0 / (1.0 + (double)(r*r));
+		double c3 = c2 / (1.0 - 1.0 / (1.0 + (double)(r*r)));
 
-		store.r += colour.r * c3;
-		store.g += colour.g * c3;
-		store.b += colour.b * c3;
+		store.r += (int)((double)(colour.r) * c3);
+		store.g += (int)((double)(colour.g) * c3);
+		store.b += (int)((double)(colour.b) * c3);
 
 		store.total = store.r + store.g + store.g;
 	
@@ -787,6 +789,34 @@ public:
 		}
 		ff(callx, cally);
 	}
+
+		void dostaticlights(){
+			staticlight.Fill({ 0, 0, 0, 0 });
+			for (int y = 0; y < height; y++){
+				for (int x = 0; x < width; x++){
+					switch (displaychar.at(x, y)){
+					case '^':
+						do_fov_foralight(x, y, 9, walllight,0 );
+						break;
+					case 'v':
+						do_fov_foralight(x, y, 9, walllight, 1);
+						break;
+					case '>':
+						do_fov_foralight(x, y, 9, walllight, 3);
+						break;
+					case '<':
+						do_fov_foralight(x, y, 9, walllight,4);
+						break;
+					case 'L':
+						do_fov_foralight(x, y, 5, { 255, 0, 0 });
+						break;
+					default:
+						break;
+					}
+				}
+			}
+		}
+
 
 		void genlevel_rooms();
 		//bool CheckAllSidesAndPickOne(int x,int y,char seek,int& xout, int&yout);
@@ -867,6 +897,7 @@ public:
 
 		void lavaize(int x, int y){
 			displaychar.at(x, y) = 'L';
+			dostaticlights();
 			//if skel on square- becomes fire skel
 			item_instance* i = itemgrid.at(x, y);
 			if (i != nullptr){

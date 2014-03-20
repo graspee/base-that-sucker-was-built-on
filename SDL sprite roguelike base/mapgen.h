@@ -406,14 +406,14 @@ void RLMap::genlevel_rooms(){
 			if (displaychar.at(tentx, tenty) == '#'){
 				if (shootrays(tentx, tenty, ' ', outx, outy, direction, true)){
 					displaychar.at(outx, outy) = lil::dirchar[direction];
-					do_fov_foralight(outx, outy, 9, { 255, 255, 128 },direction);
+					do_fov_foralight(outx, outy, 9,walllight, direction);//255,255,128 pampkin 255, 117, 24
 				}
 				
 			}
 			else {
 				if (shootrays(tentx, tenty, '#', outx, outy, direction)){
 					displaychar.at(outx, outy) = lil::dirchar_rev[direction];
-					do_fov_foralight(outx, outy, 9, { 255, 255, 128 },lil::opdir[direction]);
+					do_fov_foralight(outx, outy, 9,  walllight , lil::opdir[direction]);//255,255,128
 				}
 			}
 			
@@ -438,7 +438,7 @@ void RLMap::genlevel_rooms(){
 	//additem(20, Eitemtype::ITEM_BATTERY);
 	//additem(20, Eitemtype::ITEM_MEDPACK);
 
-	player.hp = 10;
+	//player.hp = 10;
 
 
 	//place player

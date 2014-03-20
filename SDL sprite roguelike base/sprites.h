@@ -1,6 +1,10 @@
 #pragma once
 
+#if _DEBUG
 #define ASSET(x) "C:\\Users\\graspee\\git\\Sucker\\media\\"##x
+#else 
+#define ASSET(x) "media\\"##x
+#endif 
 
 //global vars for sprites
 std::array<SDL_Texture*, 40> sprites;

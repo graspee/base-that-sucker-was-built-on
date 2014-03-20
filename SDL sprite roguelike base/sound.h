@@ -14,7 +14,12 @@ unordered_map <std::string, Mix_Chunk*> dicosound;
 Mix_Music* titlemusic=nullptr; //music
 Mix_Music* gamemusic = nullptr;
 
+#if _DEBUG
 #define WAVASSET(x) "C:\\Users\\graspee\\git\\Sucker\\media\\"##x##".wav"
+#else 
+#define WAVASSET(x) "media\\"##x##".wav"
+#endif 
+
 //mix_volumemusic 0-128
 
 void loadsound(char* filename,char* name){

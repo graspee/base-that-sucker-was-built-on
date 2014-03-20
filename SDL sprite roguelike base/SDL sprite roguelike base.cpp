@@ -58,7 +58,7 @@ inline unsigned int clamp(unsigned int x,unsigned int low, unsigned int high){
 	return x;
 }
 
-int fprintf(FILE * stream, const char * format, ...){ return 0; }
+//int fprintf(FILE * stream, const char * format, ...){ return 0; }
 
 
 
@@ -454,14 +454,14 @@ bool trytomove(int deltax, int deltay){
 				player.score += 500; //SCORE : RESCUE TZIKEN FROM CHEST 500 POINTS
 				//std::cout << "broom emerges";//TODO Actually make broom emerge
 
-
+				
 				map->displaychar.at(tentx, tenty) = ' ';
 				item_instance* tziken = new item_instance(Eitemtype::MOB_TZIKEN, tentx, tenty);
 				tziken->behaviour = EBehaviour::BEHAVIOUR_STATIC;
 				map->itemput(tziken, tentx, tenty);
 
 				map->moblist.push_back(tziken);
-
+				
 				return true;//delete this
 			}
 			break;

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <cstdlib>
 #include <time.h>
@@ -113,6 +113,9 @@ namespace lil {
 	inline void replacevalue(std::vector<T>& v, T value, T newvalue){
 		*find(v.begin(), v.end(), value)=newvalue;
 	}
+
+	
+	
 
 	//new for PROBLEM
 	template <typename T>
