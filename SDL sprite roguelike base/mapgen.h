@@ -474,7 +474,8 @@ void RLMap::genlevel_rooms(){
 	//add 20 mobs
 	//TODO distance from player check
 	for (int f = 0; f < 20; f++){
-		addmob(1,(Eitemtype) lil::rand( (int)Eitemtype::MOB_SKEL, (int)Eitemtype::MOB_BAT ));
+	//	addmob(1,(Eitemtype) lil::rand( (int)Eitemtype::MOB_SKEL, (int)Eitemtype::MOB_BAT ));
+		addmob(1, Eitemtype::MOB_KOBBY);
 	}
 
 	//add 20 items

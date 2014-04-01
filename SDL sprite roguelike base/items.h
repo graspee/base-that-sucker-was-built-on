@@ -15,7 +15,8 @@ enum class Eitemtype  {
 	ITEM_BATTERY, ITEM_SHIELD, ITEM_STOPWATCH, ITEM_SWORD, ITEM_MEDPACK, ITEM_JUNK, 
 	ITEM_LAVA,ITEM_KEY, 
 	DEAD_SKEL, DEAD_KOBBY, DEAD_GOLEM, DEAD_CUEB, DEAD_IMP, DEAD_BAT,
-	DEAD_RABBIT, DEAD_BROOM, DEAD_TZIKEN};
+	DEAD_RABBIT, DEAD_BROOM, DEAD_TZIKEN,
+	ITEM_BOMB5, ITEM_BOMB4, ITEM_BOMB3, ITEM_BOMB2, ITEM_BOMB1};
 
 //There is one instance of mob_archetype per monster
 struct item_archetype {
@@ -103,6 +104,8 @@ struct item_instance {
 	char movdircurrent = 0;
 
 	int uses=5;
+
+	bool stunned = false;
 
 	item_instance(Eitemtype _type, int _x, int _y
 		){
@@ -222,6 +225,23 @@ void setupitems(){
 
 	dicoarchetype.insert(pair<Eitemtype, item_archetype>(Eitemtype::ITEM_LAVA,
 	{ "lava", Eitemtype::ITEM_LAVA, Eitemtype::NOTHING, dicosprite.at("lava"), false, false, 0, 0, 0, false, true, true, false }));
+
+	dicoarchetype.insert(pair<Eitemtype, item_archetype>(Eitemtype::ITEM_BOMB5,
+	{ "bomb", Eitemtype::ITEM_BOMB5, Eitemtype::ITEM_BOMB4, dicosprite.at("bomb5"), false, false, 0, 0, 0, false, true, true, false }));
+
+	dicoarchetype.insert(pair<Eitemtype, item_archetype>(Eitemtype::ITEM_BOMB4,
+	{ "bomb", Eitemtype::ITEM_BOMB4, Eitemtype::ITEM_BOMB3, dicosprite.at("bomb4"), false, false, 0, 0, 0, false, true, true, false }));
+
+	dicoarchetype.insert(pair<Eitemtype, item_archetype>(Eitemtype::ITEM_BOMB3,
+	{ "bomb", Eitemtype::ITEM_BOMB3, Eitemtype::ITEM_BOMB2, dicosprite.at("bomb3"), false, false, 0, 0, 0, false, true, true, false }));
+
+	dicoarchetype.insert(pair<Eitemtype, item_archetype>(Eitemtype::ITEM_BOMB2,
+	{ "bomb", Eitemtype::ITEM_BOMB2, Eitemtype::ITEM_BOMB1, dicosprite.at("bomb2"), false, false, 0, 0, 0, false, true, true, false }));
+
+	dicoarchetype.insert(pair<Eitemtype, item_archetype>(Eitemtype::ITEM_BOMB1,
+	{ "bomb", Eitemtype::ITEM_BOMB1, Eitemtype::NOTHING, dicosprite.at("bomb1"), false, false, 0, 0, 0, false, true, true, false }));
+
+
 
 	//mobs
 

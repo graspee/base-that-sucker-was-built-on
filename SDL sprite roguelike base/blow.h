@@ -195,6 +195,9 @@ bool blow(int operatorx, int operatory, int range){
 	//ok object is at destination. let's see if it has enough energy left to
 	//damage a mob
 
+	//mob is stunned
+	if(i->type->ismob)i->stunned = true;
+
 	int sx2 =sx + lil::deltax[lastfound];
 	int sy2= sy + lil::deltay[lastfound];
 

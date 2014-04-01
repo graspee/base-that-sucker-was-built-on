@@ -6,6 +6,7 @@
 void SHOW();
 int  GetKey();
 void damagemob(item_instance* i, int x, int y, int amount);
+void dobomb(item_instance* i);
 
 struct ColouredLight {
 	signed int r, g, b,total;
@@ -56,6 +57,36 @@ public:
 	//vector<item_instance*> moblist;
 	list<item_instance*> moblist;
 	//vector<item_instance*> itemlist;
+	list<item_instance*> bomblist;
+
+
+	vector<todoitem> BresLine(int x0, int y0, int x1, int y1){
+
+		int dx = abs(x1 - x0);
+		int dy = abs(y1 - y0);
+		int sx = (x0 < x1) ? 1 : -1;
+		int sy = (y0 < y1) ? 1 : -1;
+		int err = dx - dy;
+
+		vector<todoitem> pibs;
+
+		while (1){
+			pibs.push_back({ x0, y0 });
+			if (x0 == x1 && y0 == y1)break;
+			int e2 = 2 * err;
+			if (e2 > -dy){
+				err -= dy;
+				x0 += sx;
+			}
+			if (e2 < dx){
+				err += dx;
+				y0 += sy;
+			}
+		}
+		return pibs;
+	}
+
+
 
 	//give it an x and y and a fn and it returns you a random 8neigbour that matches the fn
 	bool squarecheck(int x, int y, int& outx, int &outy, 
@@ -122,7 +153,19 @@ public:
 		return (x >= originx && y >= originy
 			&&x < originx + 21 && y < originy + 21);
 	}
+
+	inline bool inbounds(int x, int y){
+		return(x >= 0 && y >= 0 && x < width && y < height);
+	}
+
 	void item_getsaturn(item_instance* i){
+
+		if (i->stunned){
+			i->stunned = false;
+			messagelog("The " + i->type->name + " is temporarily stunned.");
+			return;
+		}
+
 		//std::cout << "getsaturn " << (int) originx << " " << (int) originy << std::endl;
 		if (in_FOV.get(i->posx, i->posy)							//if this item is in your field of view
 			&& i->type->ismob										//and it's a mob
@@ -138,6 +181,50 @@ public:
 
 		//mobs can notice you and attack you on the same turn- is this wise? especially now
 		//we have death-dealing laser rabbits
+
+
+		//kobby bombing
+		if (i->type->type == Eitemtype::MOB_KOBBY && lil::rand(1,100)<11){
+			if (i->noticedplayer && !player.stealthed &&
+				onscreen(i->posx, i->posy)){
+				int outx, outy;
+				bool ok=squarecheck(player.posx, player.posy, outx, outy,
+					[](int x, int y){return true; });
+				if (ok){
+					int ox = outx, oy = outy;
+					bool ok = squarecheck(ox, oy, outx, outy,
+						[this](int x, int y){return ((!(player.posx==x && player.posy==y))&& this->passable.get(x, y) && this->onscreen(x,y)); });
+					if (ok){
+						renderscreen();
+						int curx = (i->posx - originx) * 16, cury = (i->posy - originy) * 16;
+						int destx = (outx - originx) * 16; int desty = (outy - originy) * 16;
+						SDL_Texture* t = dicosprite.at("bomb5");
+
+						auto v = BresLine(curx, cury, destx, desty);
+						int p = 0;
+						Uint32 timeoriginal = SDL_GetTicks();
+
+						while (p < v.size()){
+							drawsprite(v[p].x, v[p].y, t);
+							SHOW();
+							renderscreen(false);
+							p = ((SDL_GetTicks() - timeoriginal) / 1000.0) * 200.0;
+						}
+						drawsprite(v.back().x, v.back().y, t);
+						SHOW();
+						
+						item_instance* i = new item_instance(Eitemtype::ITEM_BOMB5, outx, outy);
+						//i->stunned = true;
+						itemput(i,outx,outy);
+						bomblist.push_back(i);
+						messagelog("The kobby throws a bomb!");
+
+					}
+				}
+
+			}
+		}
+
 
 		//ESR laser attack
 		if (i->type->type == Eitemtype::MOB_ESR || i->type->type == Eitemtype::MOB_ESRSHIELD){
@@ -334,6 +421,11 @@ public:
 
 	~RLMap(){
 		//std::cout << "~map going down";
+		
+		//delete everything on the itemgrid. stuff in moblist and bomblist
+		//should be taken out because it will also be in the itemgrid
+		//or if not, in the vacuum and get deleted on scoring screen
+
 		for (size_t y = 0; y < height; y++)
 		{
 			for (size_t x = 0; x < width; x++)
@@ -342,6 +434,9 @@ public:
 					delete itemgrid.at(x, y);
 			}
 		}
+
+
+
 	}
 
 	
@@ -894,7 +989,32 @@ public:
 				}
 			}
 		}
-
+		void blowup(int x, int y,bool playercentre=false){
+			if (x == player.posx && y == player.posy){
+				if (playercentre)
+					player.damage(10, false, "a bomb you were carrying.");
+				else
+					player.damage(6, true, "an exploding bomb.");
+				return;
+			}
+			else {
+				item_instance* i = itemgrid.at(x, y);
+				if (i != nullptr){
+					if (i->type->ismob){
+						damagemob(i, x, y, 6);
+					}
+					else {
+						if (i->type->type==Eitemtype::ITEM_BOMB5
+							||i->type->type==Eitemtype::ITEM_BOMB4
+							|| i->type->type == Eitemtype::ITEM_BOMB3
+							||i->type->type == Eitemtype::ITEM_BOMB2
+							|| i->type->type == Eitemtype::ITEM_BOMB1){
+							dobomb(i);
+						}
+					}
+				}
+			}
+		}
 		void lavaize(int x, int y){
 			displaychar.at(x, y) = 'L';
 			dostaticlights();

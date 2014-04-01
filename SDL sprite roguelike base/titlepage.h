@@ -156,7 +156,7 @@ void doredefkeys(){
 				int a = GetKey();
 				if (a != SDL_SCANCODE_ESCAPE)OPTION_buttons_copy[highlighted] = a;
 				drawblankline(highlighted);
-				print(SDL_GetKeyName(SDL_GetKeyFromScancode(SDL_Scancode(OPTION_buttons_copy[highlighted]))), 250, 50 + 20 * highlighted, 40, 75, 250);
+				print(SDL_GetKeyName(SDL_GetKeyFromScancode(SDL_Scancode(OPTION_buttons_copy[highlighted]))), 300, 50 + 20 * highlighted, 40, 75, 250);
 				SHOW();
 				break; 
 			}

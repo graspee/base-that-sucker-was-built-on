@@ -48,7 +48,7 @@ void pangodelay(unsigned int ms){
 	}
 }
 
-void renderscreen(); //forward declaration
+void renderscreen(bool showit=true); //forward declaration
 
 typedef unsigned int uint;
 
@@ -171,6 +171,51 @@ void damagemob(item_instance* i, int x, int y, int amount){
 	if (i->hp <= 0)
 		killamob(i, x, y);
 }
+
+void dobomb(item_instance* i){
+	playsound("explode");
+	messagelog("The bomb explodes!", 255, 0, 0);
+
+	int x, y;
+	if (player.held == i){
+		x = player.posx, y = player.posy;
+		player.held = nullptr;
+		map->blowup(x, y, true);
+	}
+	else {
+		x = i->posx, y = i->posy;
+		map->itemremovefrom(i);
+		map->blowup(x, y, false);
+	}
+	//check all 8 positions
+
+	SDL_Rect r;
+	r.h = 16, r.w = 16;
+	r.x = 16 * (x - originx);
+	r.y = 16 * (y - originy);
+
+	SDL_SetRenderDrawColor(renderer, 230, 0, 0,128);
+
+	SDL_RenderFillRect(renderer, &r);
+
+	for (char f = 0; f < 8; f++){
+		int xx = x+lil::deltax[f];
+		int yy = y+lil::deltay[f];
+
+		if (map->inbounds(xx, yy)){
+			map->blowup(xx, yy);
+			if (map->onscreen(xx, yy) && map->blocks_sight.get(xx,yy)==false){
+				r.x = 16*(xx - originx), r.y = 16*(yy - originy);
+				SDL_RenderFillRect(renderer, &r);
+			}
+		}
+	}
+	lil::replacevalue(map->bomblist, i, (item_instance*)nullptr);
+	delete i;
+	SHOW();
+	pangodelay(100);
+}
+
 
 
 inline void  MINIMAP_PIXEL(int THISX, int  THISY) {
@@ -679,7 +724,7 @@ void waitonplayer(){
 }
 
 
-
+//this all happens after player has taken a turn.
 void timepasses(){
 	//time passes.
 
@@ -696,7 +741,26 @@ void timepasses(){
 			}
 		}
 		getmana = false;
-	}//PROBLEM (DELETING ITEMS FROM VECTOR WHILE ITERATING OVER IT)
+	}//PROBLEM (DELETING ITEMS FROM VECTOR WHILE ITERATING OVER IT)	
+	
+	//bomb list 
+	for (auto f : map->bomblist){
+		if (f != nullptr){
+			if (!f->invacuum){
+				//process bomb
+				if (f->type->type == Eitemtype::ITEM_BOMB1){
+					dobomb(f);
+				}
+				else {
+					f->type = &dicoarchetype[f->type->deadoneofthem];
+				}
+				
+			}
+		}
+	}
+
+	map->bomblist.remove(nullptr);//for problem
+
 	for (auto f : map->moblist){
 		if (f != nullptr){
 			if (!f->invacuum){
@@ -705,7 +769,10 @@ void timepasses(){
 			}
 		}
 	}
-	map->moblist.remove(0);//for problem
+	map->moblist.remove(nullptr);//for problem
+	
+
+
 
 	//rabbit gating in chance
 	if (player.turns > 100){
@@ -739,7 +806,7 @@ void timepasses(){
 	
 }
 
-void renderscreen(){
+void renderscreen(bool showit){
 	//render dungeon
 	//std::cout << "r";
 	//ORIG 19 AND 9
@@ -965,7 +1032,7 @@ void renderscreen(){
 
 	
 
-	SHOW();
+	if(showit)SHOW();
 }
 
 #if _DEBUG

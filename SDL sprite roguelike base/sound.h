@@ -79,7 +79,7 @@ void soundinit(void){
 
 	loadsound(WAVASSET("endlevel"), "endlevel");
 	
-	loadsound(WAVASSET("explode"), "explode");//not used yet
+	loadsound(WAVASSET("explode"), "explode");
 	
 	Mix_Init(MIX_INIT_MP3);
 	titlemusic = Mix_LoadMUS(ASSET("tumirada.mp3"));
